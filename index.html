@@ -1,520 +1,431 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
-  <title>Мафия — Таблица</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#ffffff">
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js');
-      });
-    }
-
-    // Блокировка свайпа вниз на смартфонах
-    window.addEventListener("touchstart", function (e) {
-      if (e.touches.length !== 1) return;
-      const startY = e.touches[0].clientY;
-      const startScroll = document.scrollingElement.scrollTop;
-      function onTouchMove(ev) {
-        const dy = ev.touches[0].clientY - startY;
-        if (startScroll === 0 && dy > 0) {
-          ev.preventDefault();
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рейтинг Мафии</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-      }
-      window.addEventListener("touchmove", onTouchMove, { passive: false, once: true });
-    });
-  </script>
-  <script src="xlsx.full.min.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 10px; background: white; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-    td, th { border: 1px solid #ccc; padding: 6px; text-align: center; min-width: 44px; }
-    .cell { cursor: pointer; }
-    .red { background: #f88 !important; }
-    .green { background: #8f8 !important; }
-    .purple { background: #d8b6ff !important; }
-    .pink { background: #ffc0cb !important; }
-    .gradient-pink-purple { background: linear-gradient(45deg, #ffc0cb 50%, #d8b6ff 50%); }
-    .gradient-pink-green { background: linear-gradient(45deg, #ffc0cb 50%, #8f8 50%); }
-    .gradient-pink-red { background: linear-gradient(45deg, #ffc0cb 50%, #f88 50%); }
-    .num-red { background: #f55 !important; color: white; font-weight: bold; }
-    .hidden-role { display: none; }
-    .role-toggle { cursor: pointer; text-decoration: underline; margin-right: 10px; }
-    #selectedPlayer {
-      font-size: 440px;
-      text-align: center;
-      margin-top: 400px;
-      font-weight: bold;
-      color: red;
-      padding-bottom: 400px;
-    }
-    #loadFile { display: none; }
-    label[for="loadFile"] {
-      background-color: #eee;
-      border: 1px solid #ccc;
-      padding: 6px 12px;
-      cursor: pointer;
-      user-select: none;
-      margin-left: 10px;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    label[for="loadFile"]:hover { background-color: #ddd; }
-
-    #extraTable td {
-      border: 1px solid #ccc;
-      min-width: 23px;
-      width: 23px;
-      height: 24px;
-      font-size: 16px;
-      padding: 2px;
-    }
-  </style>
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        
+        th, td {
+            padding: 8px 4px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+        
+        th {
+            background: #2196F3;
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .editable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .editable:hover {
+            background-color: #e3f2fd !important;
+        }
+        
+        .add-row {
+            background: #4CAF50 !important;
+            color: white;
+        }
+        
+        .save-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .save-btn:hover {
+            background: #45a049;
+        }
+        
+        .save-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 300px;
+        }
+        
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .modal-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .confirm-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .cancel-btn {
+            background: #f44336;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-<h3>Таблица действий \\ created by @Altimak</h3>
-<div style="margin: 14px 0; padding: 14px; background: #f9f9f9; border: 1px solid #ccc; font-size: 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-  ⏱️ Таймер:
-  <input type="number" id="timeInput" min="5" max="120" step="5" value="50" style="font-size: 20px; width: 80px; padding: 4px;"> сек
-  <button onclick="startTimer()" style="font-size: 16px; padding: 6px 10px;">▶️ Пуск</button>
-  <button onclick="resetTimer()" style="font-size: 16px; padding: 6px 10px;">🔁 Сброс</button>
-  <span id="timerDisplay" style="font-weight: bold; font-size: 22px;">50 сек.</span>
-</div>
-
-<audio id="beepSound" src="beep2.mp3" preload="auto"></audio>
-<audio id="beep10Sound" src="beep1.mp3" preload="auto"></audio>
-
-<script>
-let timerValue = 50;
-let countdown = null;
-let remainingTime = timerValue;
-
-const timeInput = document.getElementById("timeInput");
-const display = document.getElementById("timerDisplay");
-const beep = document.getElementById("beepSound");
-const beep10 = document.getElementById("beep10Sound");
-
-document.addEventListener("click", () => {
-  beep.play().catch(() => {});
-  beep.pause(); beep.currentTime = 0;
-
-  beep10.play().catch(() => {});
-  beep10.pause(); beep10.currentTime = 0;
-}, { once: true });
-
-function updateDisplay() {
-  display.textContent = `${remainingTime} сек.`;
-}
-
-function startTimer() {
-  clearInterval(countdown);
-
-  timerValue = parseInt(timeInput.value) || 50;
-  remainingTime = timerValue;
-  updateDisplay();
-
-  countdown = setInterval(() => {
-    remainingTime--;
-    updateDisplay();
-
-    if (remainingTime === 10) {
-      beep10.play().catch(err => console.warn("Can't play beep10:", err));
-    }
-
-    if (remainingTime <= 0) {
-      clearInterval(countdown);
-      beep.play().catch(err => console.warn("Can't play beep:", err));
-    }
-  }, 1000);
-}
-
-function resetTimer() {
-  clearInterval(countdown);
-  remainingTime = parseInt(timeInput.value) || 50;
-  updateDisplay();
-}
-</script>
-
-<div style="background: #f0f0f0; padding: 14px; margin-bottom: 14px;">
-  <b>Подсказка по ролям:</b><br>
-  <span class="role-toggle" data-role="П">П — путана</span>
-  <span class="role-toggle" data-role="Л">Л — любовница</span>
-  <span class="role-toggle" data-role="Х">Х — мафия</span>
-  <span class="role-toggle" data-role="Хд">Хд — дон</span>
-  <span class="role-toggle" data-role="В">В — доктор</span>
-  <span class="role-toggle" data-role="Ш">Ш — шериф</span>
-  <span class="role-toggle" data-role="М">М — маньяк</span>
-  <span class="role-toggle" data-role="К">К — камикадзе</span>
-  <span class="role-toggle" data-role="С">С — мститель</span>
-  <span class="role-toggle" data-role="ХХХ">ХХХ — внезапная смерть</span>
-  <button onclick="showAllRoles()" style="margin-left: 20px;">👁️ Показать всё</button>
-</div>
-
-<div>
-  <button onclick="exportData(true)">💾 Сохранить</button>
-  <label for="loadFile">📂 Загрузить</label>
-  <input type="file" id="loadFile" accept=".json" />
-  <button onclick="resetTable()">♻️ Сброс</button>
-  <button onclick="exportToExcel()">📤 В Excel</button>
-</div>
-
-<table id="mafiaTable">
-  <thead>
-    <tr id="headerRow"><th>#</th><th>Роль</th></tr>
-  </thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
-<!-- Вторая таблица -->
-<table id="extraTable">
-  <tbody></tbody>
-</table>
-
-<div id="selectedPlayer"></div>
-
-<script>
-let playerCount = 10;
-let nightCount = 8;
-const hiddenRoles = new Set();
-
-const headerRow = document.getElementById("headerRow");
-const tableBody = document.getElementById("tableBody");
-
-const roleOptions = ["", "П", "Л", "Х", "Хд", "В", "Ш", "М", "К", "С"];
-function renderNightHeaders() {
-  while (headerRow.children.length > 2) headerRow.removeChild(headerRow.lastChild);
-  for (let n = 1; n <= nightCount; n++) {
-    const th = document.createElement("th");
-    th.textContent = `Ночь ${n}`;
-    th.ondblclick = () => {
-      nightCount++;
-      renderNightHeaders();
-      tableBody.querySelectorAll("tr").forEach(row => {
-        const cell = document.createElement("td");
-        cell.className = "cell";
-        row.appendChild(cell);
-      });
-    };
-    headerRow.appendChild(th);
-  }
-}
-
-function getCellClass(text) {
-  const parts = text.toUpperCase().split("\\").map(p => p.trim());
-  const has = r => parts.includes(r);
-  if (has("ХХХ")) return "red";
-  if (has("П") && has("Л")) return "gradient-pink-purple";
-  if (has("П") && has("В")) return "gradient-pink-green";
-  if (has("П") && (has("Х") || has("М"))) return "gradient-pink-red";
-  if (has("Л")) return "purple";
-  if (has("В")) return "green";
-  if (has("Х") || has("М")) return "red";
-  if (has("П")) return "pink";
-  return "";
-}
-
-function resetColorClasses(cell) {
-  cell.classList.remove("red", "green", "purple", "pink",
-    "gradient-pink-purple", "gradient-pink-green", "gradient-pink-red");
-}
-
-function updateRowColors(row) {
-  const cells = [...row.querySelectorAll(".cell")];
-  const numCell = row.querySelector("td");
-  numCell.classList.remove("num-red");
-  cells.forEach(c => c.classList.remove("red"));
-
-  for (let i = 0; i < cells.length; i++) {
-    const val = cells[i].textContent.toUpperCase();
-    const parts = val.split("\\").map(p => p.trim());
-    const hasKill = parts.includes("Х") || parts.includes("М");
-    const hasCancel = parts.includes("Л") || parts.includes("В");
-    const hasXXX = parts.includes("ХХХ");
-
-    if (hasXXX || (hasKill && !hasCancel)) {
-      numCell.classList.add("num-red");
-      resetColorClasses(cells[i]);
-      const style = getCellClass(val);
-      if (style) cells[i].classList.add(style);
-      return;
-    }
-  }
-}
-
-function addPlayerRow(num = tableBody.children.length + 1) {
-  const row = document.createElement("tr");
-
-  const numCell = document.createElement("td");
-  numCell.className = "number-cell";
-  numCell.textContent = num;
-  numCell.ondblclick = () => addPlayerRow();
-  numCell.onclick = () => {
-    document.getElementById("selectedPlayer").textContent = num;
-  };
-  row.appendChild(numCell);
-
-  const roleCell = document.createElement("td");
-  const select = document.createElement("select");
-  roleOptions.forEach(opt => {
-    const o = document.createElement("option");
-    o.value = opt;
-    o.textContent = opt;
-    select.appendChild(o);
-  });
-    select.addEventListener("change", () => {
-    saveToLocalStorage();
-  });
-  roleCell.appendChild(select);
-  row.appendChild(roleCell);
-
-  for (let i = 0; i < nightCount; i++) {
-    const cell = document.createElement("td");
-    cell.className = "cell";
-    row.appendChild(cell);
-  }
-
-  tableBody.appendChild(row);
-}
-
-function createTable(count) {
-  tableBody.innerHTML = "";
-  for (let i = 1; i <= count; i++) addPlayerRow(i);
-}
-
-renderNightHeaders();
-createTable(playerCount);
-
-// Вторая таблица: 6 строк × 24 столбца
-function createExtraTable() {
-  const tbody = document.querySelector("#extraTable tbody");
-  for (let i = 0; i < 6; i++) {
-    const row = document.createElement("tr");
-    for (let j = 0; j < 20; j++) {
-      const cell = document.createElement("td");
-      cell.contentEditable = true;
-      cell.setAttribute("draggable", "false");
-      cell.addEventListener("dragstart", e => e.preventDefault());
-      cell.addEventListener("drop", e => e.preventDefault());
-      cell.addEventListener("input", () => {
-        let val = cell.textContent.trim();
-        if (val === "0") cell.textContent = "";
-        else if (!/^\d{1,2}$/.test(val)) {
-          cell.textContent = val.replace(/\D/g, "").slice(0, 2);
+    <div class="container">
+        <div class="header">
+            <h2>🏆 Рейтинг Мафии 🏆</h2>
+            <p id="edit-mode" style="color: #666; margin-top: 5px;"></p>
+        </div>
+        
+        <table id="rating-table">
+            <thead>
+                <tr>
+                    <th>Место</th>
+                    <th>Ник</th>
+                    <th>Кол. игр</th>
+                    <th>Мирный</th>
+                    <th>Мафия</th>
+                    <th>Дон</th>
+                    <th>Любовница</th>
+                    <th>Шериф</th>
+                    <th>Доктор</th>
+                    <th>Маньяк</th>
+                    <th>Камикадзе</th>
+                    <th>Мститель</th>
+                    <th>Очки</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <!-- Данные будут заполнены JavaScript -->
+            </tbody>
+        </table>
+        
+        <button id="save-btn" class="save-btn" style="display: none;">
+            💾 СОХРАНИТЬ ИЗМЕНЕНИЯ
+        </button>
+    </div>
+    
+    <!-- Модальное окно для редактирования -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Редактирование</h3>
+            <input type="text" id="modal-input" placeholder="Введите значение">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel-btn" onclick="closeModal()">Отмена</button>
+                <button class="modal-btn confirm-btn" onclick="confirmEdit()">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let tg = Telegram.WebApp;
+        let players = [];
+        let isEditMode = false;
+        let currentEdit = null;
+        
+        // Инициализация WebApp
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        // Проверяем режим редактирования из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        isEditMode = urlParams.get('edit') === 'true';
+        
+        // Загружаем данные (в реальности нужно получать с сервера)
+        function loadData() {
+            // Здесь должны быть реальные данные из Excel файла
+            // В демо-версии используем тестовые данные
+            players = [
+                {
+                    place: 1,
+                    nick: "Джадж",
+                    totalGames: 10,
+                    totalPoints: 150,
+                    мирный: {o: 50, t: 5},
+                    мафия: {o: 30, t: 2},
+                    дон: {o: 20, t: 1},
+                    любовница: {o: 10, t: 1},
+                    шериф: {o: 15, t: 1},
+                    доктор: {o: 10, t: 0},
+                    маньяк: {o: 10, t: 0},
+                    камикадзе: {o: 5, t: 0},
+                    мститель: {o: 0, t: 0}
+                }
+            ];
+            
+            renderTable();
         }
-        saveToLocalStorage();
-      });
-      row.appendChild(cell);
-    }
-    tbody.appendChild(row);
-  }
-}
-createExtraTable();
-// Клики по ячейкам
-document.addEventListener("click", e => {
-  if (e.target.classList.contains("cell")) {
-    const cell = e.target;
-    const row = cell.parentElement;
-    let input = prompt("П, Л, Х, Хд, В, Ш, М, К, С, ХХХ, 1 — фолл. Удалить — 0. Удалить последнее — 00");
-    if (input === null) return;
-    input = input.toUpperCase().trim();
-
-    if (input === "0") {
-      cell.textContent = "";
-    } else if (input === "00") {
-      const parts = cell.textContent.split("\\");
-      parts.pop();
-      cell.textContent = parts.join("\\");
-    } else if (/^(П|Л|Х|ХД|В|Ш|М|К|С|ХХХ|1)$/.test(input)) {
-      if (!hiddenRoles.has(input)) {
-        cell.textContent = cell.textContent ? cell.textContent + "\\" + input : input;
-      }
-    }
-
-    resetColorClasses(cell);
-    cell.className = "cell";
-    const style = getCellClass(cell.textContent);
-    if (style) cell.classList.add(style);
-
-    updateRowColors(row);
-    saveToLocalStorage();
-  }
-});
-
-function getTimestamp() {
-  const now = new Date();
-  const pad = n => n.toString().padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-}
-
-function exportData(manual = false) {
-  const data = { count: tableBody.children.length, rows: [], hidden: [...hiddenRoles], extra: [] };
-
-  tableBody.querySelectorAll("tr").forEach(row => {
-    const tds = row.querySelectorAll("td");
-    const role = tds[1].querySelector("select").value;
-    const nights = [...tds].slice(2).map(c => c.textContent);
-    data.rows.push({ role, nights });
-  });
-
-  document.querySelectorAll("#extraTable tr").forEach(row => {
-    const values = [];
-    row.querySelectorAll("td").forEach(cell => {
-      values.push(cell.textContent.trim());
-    });
-    data.extra.push(values);
-  });
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const filename = `mafia_${getTimestamp()}.json`;
-
-  if (manual) {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-  }
-
-  // Сохраняем в localStorage как резервную копию
-  localStorage.setItem("download_" + filename, JSON.stringify(data));
-  localStorage.setItem("latest", filename);
-}
-
-function saveToLocalStorage() {
-  exportData(false);
-}
-
-function resetTable() {
-  if (confirm("Очистить всю таблицу?")) {
-    const latestKey = localStorage.getItem("latest");
-    if (latestKey) {
-      localStorage.removeItem("download_" + latestKey);
-      localStorage.removeItem("latest");
-    }
-    location.reload();
-  }
-}
-
-function showAllRoles() {
-  document.querySelectorAll(".role-toggle").forEach(span => span.classList.remove("hidden-role"));
-  hiddenRoles.clear();
-}
-
-document.querySelectorAll(".role-toggle").forEach(span => {
-  span.addEventListener("click", () => {
-    const role = span.dataset.role.toUpperCase();
-    if (hiddenRoles.has(role)) {
-      hiddenRoles.delete(role);
-      span.classList.remove("hidden-role");
-    } else {
-      hiddenRoles.add(role);
-      span.classList.add("hidden-role");
-    }
-    saveToLocalStorage();
-  });
-});
-
-document.getElementById("loadFile").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    loadFromJSON(evt.target.result);
-  };
-  reader.readAsText(file);
-});
-
-function loadFromJSON(jsonText) {
-  try {
-    const data = JSON.parse(jsonText);
-    nightCount = data.rows[0].nights.length;
-    renderNightHeaders();
-    createTable(data.count);
-    data.rows.forEach((r, i) => {
-      const row = tableBody.children[i];
-      row.querySelector("select").value = r.role;
-      const cells = [...row.querySelectorAll(".cell")];
-      r.nights.forEach((val, j) => {
-        const c = cells[j];
-        c.textContent = val;
-        resetColorClasses(c);
-        c.className = "cell";
-        const style = getCellClass(val);
-        if (style) c.classList.add(style);
-      });
-      updateRowColors(row);
-    });
-
-    if (data.hidden) {
-      hiddenRoles.clear();
-      data.hidden.forEach(role => hiddenRoles.add(role));
-      document.querySelectorAll(".role-toggle").forEach(span => {
-        if (hiddenRoles.has(span.dataset.role.toUpperCase())) {
-          span.classList.add("hidden-role");
-        } else {
-          span.classList.remove("hidden-role");
+        
+        // Отображение таблицы
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            players.forEach((player, index) => {
+                const row = document.createElement('tr');
+                
+                // Место
+                const placeCell = document.createElement('td');
+                placeCell.textContent = player.place;
+                if (isEditMode) {
+                    placeCell.classList.add('editable', 'add-row');
+                    placeCell.onclick = () => editPlace(index);
+                }
+                row.appendChild(placeCell);
+                
+                // Ник
+                const nickCell = document.createElement('td');
+                nickCell.textContent = player.nick;
+                if (isEditMode) {
+                    nickCell.classList.add('editable');
+                    nickCell.onclick = () => editNick(index);
+                }
+                row.appendChild(nickCell);
+                
+                // Кол. игр
+                const gamesCell = document.createElement('td');
+                gamesCell.textContent = player.totalGames;
+                row.appendChild(gamesCell);
+                
+                // Роли
+                const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
+                roles.forEach(role => {
+                    const roleCell = document.createElement('td');
+                    roleCell.textContent = `${player[role].o}/${player[role].t}`;
+                    if (isEditMode) {
+                        roleCell.classList.add('editable');
+                        roleCell.onclick = () => editRole(index, role);
+                    }
+                    row.appendChild(roleCell);
+                });
+                
+                // Очки
+                const pointsCell = document.createElement('td');
+                pointsCell.textContent = player.totalPoints;
+                row.appendChild(pointsCell);
+                
+                tbody.appendChild(row);
+            });
+            
+            // Показываем/скрываем кнопку сохранения
+            const saveBtn = document.getElementById('save-btn');
+            const editModeText = document.getElementById('edit-mode');
+            
+            if (isEditMode) {
+                saveBtn.style.display = 'block';
+                editModeText.textContent = 'Режим редактирования';
+                editModeText.style.color = '#ff9800';
+            } else {
+                saveBtn.style.display = 'none';
+                editModeText.textContent = 'Только просмотр';
+                editModeText.style.color = '#666';
+            }
         }
-      });
-    }
-
-    if (data.extra) {
-      const tbody = document.querySelector("#extraTable tbody");
-      const rows = tbody.querySelectorAll("tr");
-      rows.forEach((row, i) => {
-        const cells = row.querySelectorAll("td");
-        data.extra[i]?.forEach((val, j) => {
-          cells[j].textContent = val;
+        
+        // Редактирование места (добавление строки)
+        function editPlace(index) {
+            // Добавляем новую строку после текущей
+            const newPlayer = {
+                place: '',
+                nick: '',
+                totalGames: 0,
+                totalPoints: 0,
+                мирный: {o: 0, t: 0},
+                мафия: {o: 0, t: 0},
+                дон: {o: 0, t: 0},
+                любовница: {o: 0, t: 0},
+                шериф: {o: 0, t: 0},
+                доктор: {o: 0, t: 0},
+                маньяк: {o: 0, t: 0},
+                камикадзе: {o: 0, t: 0},
+                мститель: {o: 0, t: 0}
+            };
+            
+            players.splice(index + 1, 0, newPlayer);
+            renderTable();
+        }
+        
+        // Редактирование ника
+        function editNick(index) {
+            currentEdit = { type: 'nick', index: index };
+            showModal('Редактирование ника', players[index].nick);
+        }
+        
+        // Редактирование роли
+        function editRole(index, role) {
+            currentEdit = { type: 'role', index: index, role: role };
+            showModal(`Редактирование ${role}`, '');
+        }
+        
+        // Показать модальное окно
+        function showModal(title, value) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-input').value = value;
+            document.getElementById('edit-modal').style.display = 'flex';
+            document.getElementById('modal-input').focus();
+        }
+        
+        // Закрыть модальное окно
+        function closeModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            currentEdit = null;
+        }
+        
+        // Подтверждение редактирования
+        function confirmEdit() {
+            const value = document.getElementById('modal-input').value.trim();
+            
+            if (currentEdit) {
+                if (currentEdit.type === 'nick') {
+                    players[currentEdit.index].nick = value;
+                } else if (currentEdit.type === 'role') {
+                    // Логика для ролей
+                    if (value === '123') {
+                        // Откат последнего введения
+                        const roleData = players[currentEdit.index][currentEdit.role];
+                        roleData.o = 0;
+                        roleData.t = Math.max(0, roleData.t - 1);
+                    } else {
+                        const points = parseInt(value);
+                        if (!isNaN(points)) {
+                            const roleData = players[currentEdit.index][currentEdit.role];
+                            roleData.o = points;
+                            roleData.t += 1;
+                        }
+                    }
+                }
+                
+                // Пересчет общих показателей
+                recalculatePlayer(currentEdit.index);
+            }
+            
+            closeModal();
+            renderTable();
+        }
+        
+        // Пересчет игрока
+        function recalculatePlayer(index) {
+            const player = players[index];
+            let totalGames = 0;
+            let totalPoints = 0;
+            
+            const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
+            roles.forEach(role => {
+                totalGames += player[role].t;
+                totalPoints += player[role].o;
+            });
+            
+            player.totalGames = totalGames;
+            player.totalPoints = totalPoints;
+        }
+        
+        // Сохранение данных
+        document.getElementById('save-btn').onclick = function() {
+            tg.showPopup({
+                title: 'Сохранение',
+                message: 'Вы уверены, что хотите сохранить изменения?',
+                buttons: [
+                    {id: 'yes', type: 'default', text: 'Да'},
+                    {type: 'cancel'}
+                ]
+            }, function(btnId) {
+                if (btnId === 'yes') {
+                    // Отправляем данные в бота
+                    tg.sendData(JSON.stringify(players));
+                    tg.close();
+                }
+            });
+        };
+        
+        // Загрузка данных при старте
+        loadData();
+        
+        // Обработка нажатия ESC для закрытия модального окна
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
         });
-      });
-    }
-  } catch (err) {
-    alert("Ошибка загрузки данных.");
-  }
-}
-
-// Автозагрузка последней сессии
-window.addEventListener("load", () => {
-  const latestKey = localStorage.getItem("latest");
-  if (latestKey && localStorage.getItem("download_" + latestKey)) {
-    loadFromJSON(localStorage.getItem("download_" + latestKey));
-  }
-});
-function exportToExcel() {
-  const wb = XLSX.utils.book_new();
-
-  // Основная таблица
-  const data1 = [["#", "Роль"]];
-  for (let i = 1; i <= nightCount; i++) {
-    data1[0].push(`Ночь ${i}`);
-  }
-
-  tableBody.querySelectorAll("tr").forEach((row, idx) => {
-    const tds = row.querySelectorAll("td");
-    const role = tds[1].querySelector("select").value;
-    const nights = [...tds].slice(2).map(c => c.textContent);
-    data1.push([idx + 1, role, ...nights]);
-  });
-
-  const ws1 = XLSX.utils.aoa_to_sheet(data1);
-  XLSX.utils.book_append_sheet(wb, ws1, "Таблица");
-
-  // Вторая таблица
-  const extraSheetData = [];
-  document.querySelectorAll("#extraTable tr").forEach(row => {
-    const rowData = [];
-    row.querySelectorAll("td").forEach(cell => {
-      rowData.push(cell.textContent.trim());
-    });
-    extraSheetData.push(rowData);
-  });
-
-  const ws2 = XLSX.utils.aoa_to_sheet(extraSheetData);
-  XLSX.utils.book_append_sheet(wb, ws2, "Доп. Таблица");
-
-  XLSX.writeFile(wb, `mafia_${getTimestamp()}.xlsx`);
-}
-</script>
+    </script>
 </body>
 </html>
