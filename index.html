@@ -238,23 +238,32 @@
         
         // Загружаем данные из параметров URL
         function loadDataFromUrl() {
-            const params = getUrlParams();
-            isAdmin = params.isAdmin;
-            isEditMode = params.edit && isAdmin;
+			const params = new URLSearchParams(window.location.search);
+			const dataUrl = params.get('dataUrl');
+			isAdmin = params.get('isAdmin') === 'true';
+			isEditMode = params.get('edit') === 'true' && isAdmin;
             
-            if (params.data) {
-                try {
-                    const decodedData = decodeURIComponent(params.data);
-                    players = JSON.parse(decodedData);
-                    renderTable();
-                } catch (e) {
-                    console.error('Ошибка загрузки данных:', e);
-                    document.getElementById('loading').innerHTML = 'Ошибка загрузки данных';
-                }
-            } else {
-                document.getElementById('loading').innerHTML = 'Данные не получены';
-            }
-        }
+			if (dataUrl) {
+				// Загружаем данные из GitHub
+				fetch(dataUrl)
+					.then(response => {
+						if (!response.ok) {
+							throw new Error('Network response was not ok');
+						}
+						return response.json();
+					})
+					.then(data => {
+						players = data;
+						renderTable();
+					})
+					.catch(error => {
+						console.error('Error loading data from GitHub:', error);
+						document.getElementById('loading').innerHTML = 'Ошибка загрузки данных из GitHub';
+					});
+			} else {
+				document.getElementById('loading').innerHTML = 'URL данных не указан';
+			}
+		}
         
         // Отображение таблицы
         function renderTable() {
