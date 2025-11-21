@@ -170,6 +170,16 @@
             border-radius: 10px;
             margin: 10px 0;
         }
+        
+        .debug-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #856404;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +187,10 @@
         <div class="header">
             <h2>🏆 Рейтинг Мафии 🏆</h2>
             <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
+        </div>
+        
+        <div id="debug-info" class="debug-info" style="display: none;">
+            <!-- Отладочная информация будет здесь -->
         </div>
         
         <div id="loading" class="loading">
@@ -235,9 +249,18 @@
         let currentEdit = null;
         let hasChanges = false;
         
+        // Функция для отладочной информации
+        function updateDebugInfo(message) {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+            debugDiv.style.display = 'block';
+            console.log(message);
+        }
+        
         // Инициализация WebApp
         tg.expand();
         tg.enableClosingConfirmation();
+        updateDebugInfo('WebApp инициализирован');
         
         // Загружаем данные из параметров URL
         function loadDataFromUrl() {
@@ -246,9 +269,11 @@
             isAdmin = params.get('isAdmin') === 'true';
             isEditMode = params.get('edit') === 'true' && isAdmin;
             
+            updateDebugInfo(`Параметры: dataUrl=${dataUrl ? 'есть' : 'нет'}, isAdmin=${isAdmin}, edit=${isEditMode}`);
+            
             if (dataUrl) {
                 const decodedUrl = decodeURIComponent(dataUrl);
-                console.log('Загрузка данных из:', decodedUrl);
+                updateDebugInfo(`Загрузка данных из: ${decodedUrl}`);
                 
                 // Добавляем timestamp для избежания кеширования
                 const urlWithTimestamp = `${decodedUrl}?t=${Date.now()}`;
@@ -261,18 +286,19 @@
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Данные успешно загружены:', data.length, 'игроков');
+                        updateDebugInfo(`Данные успешно загружены: ${data.length} игроков`);
                         players = data;
                         renderTable();
                     })
                     .catch(error => {
-                        console.error('Ошибка загрузки данных:', error);
+                        updateDebugInfo(`Ошибка загрузки данных: ${error}`);
                         showError('❌ Ошибка загрузки данных из GitHub. Попробуйте позже.');
                         // Показываем таблицу с пустыми данными
                         players = [];
                         renderTable();
                     });
             } else {
+                updateDebugInfo('URL данных не указан');
                 showError('URL данных не указан');
                 players = [];
                 renderTable();
@@ -365,19 +391,26 @@
                 saveBtn.style.display = 'block';
                 editModeText.textContent = 'Режим редактирования';
                 editModeText.style.color = '#ff9800';
+                updateDebugInfo('Режим редактирования включен');
             } else {
                 saveBtn.style.display = 'none';
                 editModeText.textContent = 'Только просмотр';
                 editModeText.style.color = '#666';
+                updateDebugInfo('Режим просмотра');
             }
             
             if (!isAdmin) {
                 editModeText.textContent = 'Только просмотр (не админ)';
+                updateDebugInfo('Пользователь не является администратором');
             }
+            
+            updateDebugInfo(`Таблица отображена: ${players.length} игроков`);
         }
         
         // Редактирование места (добавление строки)
         function editPlace(index) {
+            updateDebugInfo(`Добавление новой строки после индекса ${index}`);
+            
             // Добавляем новую строку после текущей
             const newPlayer = {
                 place: '',
@@ -397,12 +430,14 @@
             
             players.splice(index + 1, 0, newPlayer);
             hasChanges = true;
+            updateDebugInfo(`Новый игрок добавлен. Всего игроков: ${players.length}`);
             renderTable();
         }
         
         // Редактирование ника
         function editNick(index) {
             currentEdit = { type: 'nick', index: index };
+            updateDebugInfo(`Редактирование ника игрока ${index}`);
             showModal('Редактирование ника', players[index].nick || '');
         }
         
@@ -410,7 +445,8 @@
         function editRole(index, role) {
             currentEdit = { type: 'role', index: index, role: role };
             const roleData = players[index][role] || {o: 0, t: 0};
-            showModal(`Редактирование ${role} (введите очки)`, '');
+            updateDebugInfo(`Редактирование роли ${role} для игрока ${index}`);
+            showModal(`Редактирование ${role} (введите очки для добавления)`, '');
         }
         
         // Показать модальное окно
@@ -419,21 +455,25 @@
             document.getElementById('modal-input').value = value;
             document.getElementById('edit-modal').style.display = 'flex';
             document.getElementById('modal-input').focus();
+            updateDebugInfo(`Открыто модальное окно: ${title}`);
         }
         
         // Закрыть модальное окно
         function closeModal() {
             document.getElementById('edit-modal').style.display = 'none';
             currentEdit = null;
+            updateDebugInfo('Модальное окно закрыто');
         }
         
         // Подтверждение редактирования
         function confirmEdit() {
             const value = document.getElementById('modal-input').value.trim();
+            updateDebugInfo(`Подтверждение редактирования: ${value}`);
             
             if (currentEdit) {
                 if (currentEdit.type === 'nick') {
                     players[currentEdit.index].nick = value;
+                    updateDebugInfo(`Ник изменен на: ${value}`);
                 } else if (currentEdit.type === 'role') {
                     // Логика для ролей
                     const roleData = players[currentEdit.index][currentEdit.role] || {o: 0, t: 0};
@@ -442,6 +482,7 @@
                         // Откат последнего введения
                         roleData.o = Math.max(0, roleData.o - (roleData.lastPoints || 0));
                         roleData.t = Math.max(0, roleData.t - 1);
+                        updateDebugInfo(`Откат роли ${currentEdit.role}`);
                     } else {
                         const points = parseInt(value);
                         if (!isNaN(points)) {
@@ -449,6 +490,9 @@
                             roleData.lastPoints = points;
                             roleData.o = (roleData.o || 0) + points;
                             roleData.t = (roleData.t || 0) + 1;
+                            updateDebugInfo(`Добавлены очки ${points} к роли ${currentEdit.role}`);
+                        } else {
+                            updateDebugInfo(`Некорректные очки: ${value}`);
                         }
                     }
                     
@@ -458,6 +502,7 @@
                 // Пересчет общих показателей
                 recalculatePlayer(currentEdit.index);
                 hasChanges = true;
+                updateDebugInfo(`Изменения сохранены, есть несохраненные данные`);
             }
             
             closeModal();
@@ -479,11 +524,15 @@
             
             player.totalGames = totalGames;
             player.totalPoints = totalPoints;
+            updateDebugInfo(`Пересчет игрока ${index}: игры=${totalGames}, очки=${totalPoints}`);
         }
         
         // Сохранение данных
         document.getElementById('save-btn').onclick = function() {
+            updateDebugInfo('Нажата кнопка сохранения');
+            
             if (!hasChanges) {
+                updateDebugInfo('Нет изменений для сохранения');
                 tg.showPopup({
                     title: 'Сохранение',
                     message: 'Нет изменений для сохранения',
@@ -506,15 +555,50 @@
                     saveBtn.textContent = '💾 СОХРАНЯЕМ...';
                     saveBtn.disabled = true;
                     
-                    console.log('Отправка данных:', players);
-                    tg.sendData(JSON.stringify(players));
+                    updateDebugInfo('Начинается отправка данных...');
                     
-                    // Меняем кнопку на зеленую
-                    setTimeout(() => {
-                        saveBtn.textContent = '✅ СОХРАНЕНО';
-                        saveBtn.classList.add('saved');
-                        hasChanges = false;
-                    }, 1000);
+                    // Логируем данные перед отправкой
+                    updateDebugInfo(`Отправляемые данные: ${players.length} игроков`);
+                    console.log('Отправляемые данные:', players);
+                    console.log('Количество игроков:', players.length);
+                    
+                    if (players.length > 0) {
+                        console.log('Первый игрок:', players[0]);
+                        updateDebugInfo(`Первый игрок: ${players[0].nick} - ${players[0].totalPoints} очков`);
+                    }
+                    
+                    // Проверяем доступность tg.sendData
+                    if (typeof tg.sendData !== 'function') {
+                        updateDebugInfo('❌ ОШИБКА: tg.sendData не доступен!');
+                        console.error('❌ tg.sendData не доступен!');
+                        alert('Ошибка: sendData не доступен');
+                        saveBtn.textContent = '💾 СОХРАНИТЬ ИЗМЕНЕНИЯ';
+                        saveBtn.disabled = false;
+                        return;
+                    }
+                    
+                    updateDebugInfo('✅ tg.sendData доступен, отправляем данные...');
+                    
+                    try {
+                        // Отправляем данные
+                        tg.sendData(JSON.stringify(players));
+                        updateDebugInfo('✅ Данные отправлены через tg.sendData');
+                        
+                        // Меняем кнопку на зеленую
+                        setTimeout(() => {
+                            saveBtn.textContent = '✅ СОХРАНЕНО';
+                            saveBtn.classList.add('saved');
+                            hasChanges = false;
+                            updateDebugInfo('✅ Статус: данные отправлены, ожидаем обработки ботом');
+                        }, 1000);
+                    } catch (error) {
+                        updateDebugInfo(`❌ ОШИБКА при отправке: ${error}`);
+                        console.error('Ошибка при отправке:', error);
+                        saveBtn.textContent = '💾 ОШИБКА - ПОВТОРИТЕ';
+                        saveBtn.disabled = false;
+                    }
+                } else {
+                    updateDebugInfo('Сохранение отменено пользователем');
                 }
             });
         };
@@ -527,6 +611,7 @@
         });
         
         // Загрузка данных при старте
+        updateDebugInfo('Запуск загрузки данных...');
         loadDataFromUrl();
     </script>
 </body>
