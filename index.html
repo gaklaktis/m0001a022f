@@ -40,19 +40,22 @@
             overflow: hidden;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             margin-bottom: 15px;
+            font-size: 12px;
         }
         
         th, td {
-            padding: 8px 4px;
+            padding: 6px 3px;
             text-align: center;
             border: 1px solid #e0e0e0;
-            font-size: 12px;
+            min-width: 40px;
         }
         
         th {
             background: #2196F3;
             color: white;
             font-weight: bold;
+            position: sticky;
+            top: 0;
         }
         
         tr:nth-child(even) {
@@ -93,6 +96,10 @@
         .save-btn:disabled {
             background: #cccccc;
             cursor: not-allowed;
+        }
+        
+        .save-btn.saved {
+            background: #2E7D32;
         }
         
         .modal {
@@ -148,21 +155,31 @@
             background: #f44336;
             color: white;
         }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h2>🏆 Рейтинг Мафии 🏆</h2>
-            <p id="edit-mode" style="color: #666; margin-top: 5px;"></p>
+            <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
         </div>
         
-        <table id="rating-table">
+        <div id="loading" class="loading">
+            Загрузка данных...
+        </div>
+        
+        <table id="rating-table" style="display: none;">
             <thead>
                 <tr>
                     <th>Место</th>
                     <th>Ник</th>
-                    <th>Кол. игр</th>
+                    <th>Игры</th>
                     <th>Мирный</th>
                     <th>Мафия</th>
                     <th>Дон</th>
@@ -201,44 +218,56 @@
         let tg = Telegram.WebApp;
         let players = [];
         let isEditMode = false;
+        let isAdmin = false;
         let currentEdit = null;
+        let hasChanges = false;
         
         // Инициализация WebApp
         tg.expand();
         tg.enableClosingConfirmation();
         
-        // Проверяем режим редактирования из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        isEditMode = urlParams.get('edit') === 'true';
+        // Получаем параметры из URL
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                data: urlParams.get('data'),
+                isAdmin: urlParams.get('isAdmin') === 'true',
+                edit: urlParams.get('edit') === 'true'
+            };
+        }
         
-        // Загружаем данные (в реальности нужно получать с сервера)
-        function loadData() {
-            // Здесь должны быть реальные данные из Excel файла
-            // В демо-версии используем тестовые данные
-            players = [
-                {
-                    place: 1,
-                    nick: "Джадж",
-                    totalGames: 10,
-                    totalPoints: 150,
-                    мирный: {o: 50, t: 5},
-                    мафия: {o: 30, t: 2},
-                    дон: {o: 20, t: 1},
-                    любовница: {o: 10, t: 1},
-                    шериф: {o: 15, t: 1},
-                    доктор: {o: 10, t: 0},
-                    маньяк: {o: 10, t: 0},
-                    камикадзе: {o: 5, t: 0},
-                    мститель: {o: 0, t: 0}
-                }
-            ];
+        // Загружаем данные из параметров URL
+        function loadDataFromUrl() {
+            const params = getUrlParams();
+            isAdmin = params.isAdmin;
+            isEditMode = params.edit && isAdmin;
             
-            renderTable();
+            if (params.data) {
+                try {
+                    const decodedData = decodeURIComponent(params.data);
+                    players = JSON.parse(decodedData);
+                    renderTable();
+                } catch (e) {
+                    console.error('Ошибка загрузки данных:', e);
+                    document.getElementById('loading').innerHTML = 'Ошибка загрузки данных';
+                }
+            } else {
+                document.getElementById('loading').innerHTML = 'Данные не получены';
+            }
         }
         
         // Отображение таблицы
         function renderTable() {
             const tbody = document.getElementById('table-body');
+            const loading = document.getElementById('loading');
+            const table = document.getElementById('rating-table');
+            const saveBtn = document.getElementById('save-btn');
+            const editModeText = document.getElementById('edit-mode');
+            
+            // Скрываем загрузку и показываем таблицу
+            loading.style.display = 'none';
+            table.style.display = 'table';
+            
             tbody.innerHTML = '';
             
             players.forEach((player, index) => {
@@ -246,7 +275,7 @@
                 
                 // Место
                 const placeCell = document.createElement('td');
-                placeCell.textContent = player.place;
+                placeCell.textContent = player.place || '';
                 if (isEditMode) {
                     placeCell.classList.add('editable', 'add-row');
                     placeCell.onclick = () => editPlace(index);
@@ -255,7 +284,7 @@
                 
                 // Ник
                 const nickCell = document.createElement('td');
-                nickCell.textContent = player.nick;
+                nickCell.textContent = player.nick || '';
                 if (isEditMode) {
                     nickCell.classList.add('editable');
                     nickCell.onclick = () => editNick(index);
@@ -264,14 +293,15 @@
                 
                 // Кол. игр
                 const gamesCell = document.createElement('td');
-                gamesCell.textContent = player.totalGames;
+                gamesCell.textContent = player.totalGames || 0;
                 row.appendChild(gamesCell);
                 
                 // Роли
                 const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
                 roles.forEach(role => {
                     const roleCell = document.createElement('td');
-                    roleCell.textContent = `${player[role].o}/${player[role].t}`;
+                    const roleData = player[role] || {o: 0, t: 0};
+                    roleCell.textContent = `${roleData.o}/${roleData.t}`;
                     if (isEditMode) {
                         roleCell.classList.add('editable');
                         roleCell.onclick = () => editRole(index, role);
@@ -281,16 +311,13 @@
                 
                 // Очки
                 const pointsCell = document.createElement('td');
-                pointsCell.textContent = player.totalPoints;
+                pointsCell.textContent = player.totalPoints || 0;
                 row.appendChild(pointsCell);
                 
                 tbody.appendChild(row);
             });
             
-            // Показываем/скрываем кнопку сохранения
-            const saveBtn = document.getElementById('save-btn');
-            const editModeText = document.getElementById('edit-mode');
-            
+            // Настройка интерфейса в зависимости от режима
             if (isEditMode) {
                 saveBtn.style.display = 'block';
                 editModeText.textContent = 'Режим редактирования';
@@ -300,6 +327,10 @@
                 editModeText.textContent = 'Только просмотр';
                 editModeText.style.color = '#666';
             }
+            
+            if (!isAdmin) {
+                editModeText.textContent = 'Только просмотр (не админ)';
+            }
         }
         
         // Редактирование места (добавление строки)
@@ -307,7 +338,7 @@
             // Добавляем новую строку после текущей
             const newPlayer = {
                 place: '',
-                nick: '',
+                nick: 'Новый игрок',
                 totalGames: 0,
                 totalPoints: 0,
                 мирный: {o: 0, t: 0},
@@ -322,19 +353,20 @@
             };
             
             players.splice(index + 1, 0, newPlayer);
+            hasChanges = true;
             renderTable();
         }
         
         // Редактирование ника
         function editNick(index) {
             currentEdit = { type: 'nick', index: index };
-            showModal('Редактирование ника', players[index].nick);
+            showModal('Редактирование ника', players[index].nick || '');
         }
         
         // Редактирование роли
         function editRole(index, role) {
             currentEdit = { type: 'role', index: index, role: role };
-            showModal(`Редактирование ${role}`, '');
+            showModal(`Редактирование ${role} (o/t)`, '');
         }
         
         // Показать модальное окно
@@ -360,23 +392,28 @@
                     players[currentEdit.index].nick = value;
                 } else if (currentEdit.type === 'role') {
                     // Логика для ролей
+                    const roleData = players[currentEdit.index][currentEdit.role] || {o: 0, t: 0};
+                    
                     if (value === '123') {
                         // Откат последнего введения
-                        const roleData = players[currentEdit.index][currentEdit.role];
-                        roleData.o = 0;
+                        roleData.o = Math.max(0, roleData.o - (roleData.lastPoints || 0));
                         roleData.t = Math.max(0, roleData.t - 1);
                     } else {
                         const points = parseInt(value);
                         if (!isNaN(points)) {
-                            const roleData = players[currentEdit.index][currentEdit.role];
+                            // Сохраняем предыдущее значение для возможного отката
+                            roleData.lastPoints = points;
                             roleData.o = points;
                             roleData.t += 1;
                         }
                     }
+                    
+                    players[currentEdit.index][currentEdit.role] = roleData;
                 }
                 
                 // Пересчет общих показателей
                 recalculatePlayer(currentEdit.index);
+                hasChanges = true;
             }
             
             closeModal();
@@ -391,8 +428,9 @@
             
             const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
             roles.forEach(role => {
-                totalGames += player[role].t;
-                totalPoints += player[role].o;
+                const roleData = player[role] || {o: 0, t: 0};
+                totalGames += roleData.t;
+                totalPoints += roleData.o;
             });
             
             player.totalGames = totalGames;
@@ -401,6 +439,15 @@
         
         // Сохранение данных
         document.getElementById('save-btn').onclick = function() {
+            if (!hasChanges) {
+                tg.showPopup({
+                    title: 'Сохранение',
+                    message: 'Нет изменений для сохранения',
+                    buttons: [{type: 'ok'}]
+                });
+                return;
+            }
+            
             tg.showPopup({
                 title: 'Сохранение',
                 message: 'Вы уверены, что хотите сохранить изменения?',
@@ -411,14 +458,21 @@
             }, function(btnId) {
                 if (btnId === 'yes') {
                     // Отправляем данные в бота
+                    const saveBtn = document.getElementById('save-btn');
+                    saveBtn.textContent = '💾 СОХРАНЯЕМ...';
+                    saveBtn.disabled = true;
+                    
                     tg.sendData(JSON.stringify(players));
-                    tg.close();
+                    
+                    // Меняем кнопку на зеленую
+                    setTimeout(() => {
+                        saveBtn.textContent = '✅ СОХРАНЕНО';
+                        saveBtn.classList.add('saved');
+                        hasChanges = false;
+                    }, 1000);
                 }
             });
         };
-        
-        // Загрузка данных при старте
-        loadData();
         
         // Обработка нажатия ESC для закрытия модального окна
         document.addEventListener('keydown', function(e) {
@@ -426,6 +480,9 @@
                 closeModal();
             }
         });
+        
+        // Загрузка данных при старте
+        loadDataFromUrl();
     </script>
 </body>
 </html>
