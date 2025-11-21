@@ -161,6 +161,15 @@
             padding: 20px;
             color: #666;
         }
+        
+        .error {
+            text-align: center;
+            padding: 20px;
+            color: #f44336;
+            background: #ffebee;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -172,6 +181,10 @@
         
         <div id="loading" class="loading">
             Загрузка данных...
+        </div>
+        
+        <div id="error-message" class="error" style="display: none;">
+            Ошибка загрузки данных
         </div>
         
         <table id="rating-table" style="display: none;">
@@ -226,44 +239,51 @@
         tg.expand();
         tg.enableClosingConfirmation();
         
-        // Получаем параметры из URL
-        function getUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return {
-                data: urlParams.get('data'),
-                isAdmin: urlParams.get('isAdmin') === 'true',
-                edit: urlParams.get('edit') === 'true'
-            };
-        }
-        
         // Загружаем данные из параметров URL
         function loadDataFromUrl() {
-			const params = new URLSearchParams(window.location.search);
-			const dataUrl = params.get('dataUrl');
-			isAdmin = params.get('isAdmin') === 'true';
-			isEditMode = params.get('edit') === 'true' && isAdmin;
+            const params = new URLSearchParams(window.location.search);
+            const dataUrl = params.get('dataUrl');
+            isAdmin = params.get('isAdmin') === 'true';
+            isEditMode = params.get('edit') === 'true' && isAdmin;
             
-			if (dataUrl) {
-				// Загружаем данные из GitHub
-				fetch(dataUrl)
-					.then(response => {
-						if (!response.ok) {
-							throw new Error('Network response was not ok');
-						}
-						return response.json();
-					})
-					.then(data => {
-						players = data;
-						renderTable();
-					})
-					.catch(error => {
-						console.error('Error loading data from GitHub:', error);
-						document.getElementById('loading').innerHTML = 'Ошибка загрузки данных из GitHub';
-					});
-			} else {
-				document.getElementById('loading').innerHTML = 'URL данных не указан';
-			}
-		}
+            if (dataUrl) {
+                const decodedUrl = decodeURIComponent(dataUrl);
+                console.log('Загрузка данных из:', decodedUrl);
+                
+                // Добавляем timestamp для избежания кеширования
+                const urlWithTimestamp = `${decodedUrl}?t=${Date.now()}`;
+                
+                fetch(urlWithTimestamp)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Данные успешно загружены:', data.length, 'игроков');
+                        players = data;
+                        renderTable();
+                    })
+                    .catch(error => {
+                        console.error('Ошибка загрузки данных:', error);
+                        showError('❌ Ошибка загрузки данных из GitHub. Попробуйте позже.');
+                        // Показываем таблицу с пустыми данными
+                        players = [];
+                        renderTable();
+                    });
+            } else {
+                showError('URL данных не указан');
+                players = [];
+                renderTable();
+            }
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-message').innerHTML = message;
+            document.getElementById('error-message').style.display = 'block';
+        }
         
         // Отображение таблицы
         function renderTable() {
@@ -272,59 +292,73 @@
             const table = document.getElementById('rating-table');
             const saveBtn = document.getElementById('save-btn');
             const editModeText = document.getElementById('edit-mode');
+            const errorMessage = document.getElementById('error-message');
             
-            // Скрываем загрузку и показываем таблицу
+            // Скрываем загрузку и ошибки, показываем таблицу
             loading.style.display = 'none';
+            errorMessage.style.display = 'none';
             table.style.display = 'table';
             
             tbody.innerHTML = '';
             
-            players.forEach((player, index) => {
+            if (players.length === 0) {
                 const row = document.createElement('tr');
-                
-                // Место
-                const placeCell = document.createElement('td');
-                placeCell.textContent = player.place || '';
-                if (isEditMode) {
-                    placeCell.classList.add('editable', 'add-row');
-                    placeCell.onclick = () => editPlace(index);
-                }
-                row.appendChild(placeCell);
-                
-                // Ник
-                const nickCell = document.createElement('td');
-                nickCell.textContent = player.nick || '';
-                if (isEditMode) {
-                    nickCell.classList.add('editable');
-                    nickCell.onclick = () => editNick(index);
-                }
-                row.appendChild(nickCell);
-                
-                // Кол. игр
-                const gamesCell = document.createElement('td');
-                gamesCell.textContent = player.totalGames || 0;
-                row.appendChild(gamesCell);
-                
-                // Роли
-                const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
-                roles.forEach(role => {
-                    const roleCell = document.createElement('td');
-                    const roleData = player[role] || {o: 0, t: 0};
-                    roleCell.textContent = `${roleData.o}/${roleData.t}`;
-                    if (isEditMode) {
-                        roleCell.classList.add('editable');
-                        roleCell.onclick = () => editRole(index, role);
-                    }
-                    row.appendChild(roleCell);
-                });
-                
-                // Очки
-                const pointsCell = document.createElement('td');
-                pointsCell.textContent = player.totalPoints || 0;
-                row.appendChild(pointsCell);
-                
+                const cell = document.createElement('td');
+                cell.colSpan = 13;
+                cell.textContent = 'Нет данных для отображения';
+                cell.style.textAlign = 'center';
+                cell.style.padding = '20px';
+                cell.style.color = '#666';
+                row.appendChild(cell);
                 tbody.appendChild(row);
-            });
+            } else {
+                players.forEach((player, index) => {
+                    const row = document.createElement('tr');
+                    
+                    // Место
+                    const placeCell = document.createElement('td');
+                    placeCell.textContent = player.place || '';
+                    if (isEditMode) {
+                        placeCell.classList.add('editable', 'add-row');
+                        placeCell.onclick = () => editPlace(index);
+                    }
+                    row.appendChild(placeCell);
+                    
+                    // Ник
+                    const nickCell = document.createElement('td');
+                    nickCell.textContent = player.nick || '';
+                    if (isEditMode) {
+                        nickCell.classList.add('editable');
+                        nickCell.onclick = () => editNick(index);
+                    }
+                    row.appendChild(nickCell);
+                    
+                    // Кол. игр
+                    const gamesCell = document.createElement('td');
+                    gamesCell.textContent = player.totalGames || 0;
+                    row.appendChild(gamesCell);
+                    
+                    // Роли
+                    const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
+                    roles.forEach(role => {
+                        const roleCell = document.createElement('td');
+                        const roleData = player[role] || {o: 0, t: 0};
+                        roleCell.textContent = `${roleData.o || 0}/${roleData.t || 0}`;
+                        if (isEditMode) {
+                            roleCell.classList.add('editable');
+                            roleCell.onclick = () => editRole(index, role);
+                        }
+                        row.appendChild(roleCell);
+                    });
+                    
+                    // Очки
+                    const pointsCell = document.createElement('td');
+                    pointsCell.textContent = player.totalPoints || 0;
+                    row.appendChild(pointsCell);
+                    
+                    tbody.appendChild(row);
+                });
+            }
             
             // Настройка интерфейса в зависимости от режима
             if (isEditMode) {
@@ -375,7 +409,8 @@
         // Редактирование роли
         function editRole(index, role) {
             currentEdit = { type: 'role', index: index, role: role };
-            showModal(`Редактирование ${role} (o/t)`, '');
+            const roleData = players[index][role] || {o: 0, t: 0};
+            showModal(`Редактирование ${role} (введите очки)`, '');
         }
         
         // Показать модальное окно
@@ -412,8 +447,8 @@
                         if (!isNaN(points)) {
                             // Сохраняем предыдущее значение для возможного отката
                             roleData.lastPoints = points;
-                            roleData.o = points;
-                            roleData.t += 1;
+                            roleData.o = (roleData.o || 0) + points;
+                            roleData.t = (roleData.t || 0) + 1;
                         }
                     }
                     
@@ -438,8 +473,8 @@
             const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
             roles.forEach(role => {
                 const roleData = player[role] || {o: 0, t: 0};
-                totalGames += roleData.t;
-                totalPoints += roleData.o;
+                totalGames += roleData.t || 0;
+                totalPoints += roleData.o || 0;
             });
             
             player.totalGames = totalGames;
@@ -471,6 +506,7 @@
                     saveBtn.textContent = '💾 СОХРАНЯЕМ...';
                     saveBtn.disabled = true;
                     
+                    console.log('Отправка данных:', players);
                     tg.sendData(JSON.stringify(players));
                     
                     // Меняем кнопку на зеленую
