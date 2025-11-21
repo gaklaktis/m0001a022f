@@ -1,618 +1,405 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Рейтинг Мафии</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            padding: 10px;
-        }
-        
-        .container {
-            max-width: 100%;
-            overflow-x: auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
-            font-size: 12px;
-        }
-        
-        th, td {
-            padding: 6px 3px;
-            text-align: center;
-            border: 1px solid #e0e0e0;
-            min-width: 40px;
-        }
-        
-        th {
-            background: #2196F3;
-            color: white;
-            font-weight: bold;
-            position: sticky;
-            top: 0;
-        }
-        
-        tr:nth-child(even) {
-            background: #f8f9fa;
-        }
-        
-        .editable {
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .editable:hover {
-            background-color: #e3f2fd !important;
-        }
-        
-        .add-row {
-            background: #4CAF50 !important;
-            color: white;
-        }
-        
-        .save-btn {
-            width: 100%;
-            padding: 12px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .save-btn:hover {
-            background: #45a049;
-        }
-        
-        .save-btn:disabled {
-            background: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        .save-btn.saved {
-            background: #2E7D32;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 300px;
-        }
-        
-        .modal input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .modal-btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        
-        .confirm-btn {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .cancel-btn {
-            background: #f44336;
-            color: white;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-        
-        .error {
-            text-align: center;
-            padding: 20px;
-            color: #f44336;
-            background: #ffebee;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
-        
-        .debug-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-size: 12px;
-            color: #856404;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Рейтинг Мафии</title>
+
+  <!-- Telegram WebApp -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Tailwind CDN (быстрый способ для GitHub Pages) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Небольшие дополнительные правки */
+    .table-scroll {
+      -webkit-overflow-scrolling: touch;
+    }
+    /* плавное появление */
+    .fade-in { animation: fadeIn .22s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: none; } }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>🏆 Рейтинг Мафии 🏆</h2>
-            <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
-        </div>
-        
-        <div id="debug-info" class="debug-info" style="display: none;">
-            <!-- Отладочная информация будет здесь -->
-        </div>
-        
-        <div id="loading" class="loading">
-            Загрузка данных...
-        </div>
-        
-        <div id="error-message" class="error" style="display: none;">
-            Ошибка загрузки данных
-        </div>
-        
-        <table id="rating-table" style="display: none;">
-            <thead>
-                <tr>
-                    <th>Место</th>
-                    <th>Ник</th>
-                    <th>Игры</th>
-                    <th>Мирный</th>
-                    <th>Мафия</th>
-                    <th>Дон</th>
-                    <th>Любовница</th>
-                    <th>Шериф</th>
-                    <th>Доктор</th>
-                    <th>Маньяк</th>
-                    <th>Камикадзе</th>
-                    <th>Мститель</th>
-                    <th>Очки</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                <!-- Данные будут заполнены JavaScript -->
-            </tbody>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+  <div class="max-w-5xl mx-auto p-4">
+    <!-- Header -->
+    <header class="bg-white rounded-2xl shadow-md p-4 mb-4 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-semibold">🏆 Рейтинг Мафии</h1>
+        <p id="mode-label" class="text-sm text-slate-500">Загрузка данных…</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="refresh-btn" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-md text-sm">⟳ Обновить</button>
+        <div id="badge" class="text-sm text-slate-500"></div>
+      </div>
+    </header>
+
+    <!-- Main card -->
+    <main class="bg-white rounded-2xl shadow p-4 fade-in">
+      <!-- loading / error -->
+      <div id="loading" class="text-center py-8 text-slate-500">Загрузка данных...</div>
+      <div id="error" class="hidden text-center py-4 bg-red-50 text-red-700 rounded-md mb-4"></div>
+
+      <div class="overflow-x-auto table-scroll rounded-md">
+        <table id="rating-table" class="min-w-[900px] w-full text-sm table-auto hidden">
+          <thead class="bg-slate-800 text-white sticky top-0">
+            <tr>
+              <th class="p-3 text-left">Место</th>
+              <th class="p-3 text-left">Ник</th>
+              <th class="p-3 text-center">Игры</th>
+              <th class="p-3 text-center">Мирный</th>
+              <th class="p-3 text-center">Мафия</th>
+              <th class="p-3 text-center">Дон</th>
+              <th class="p-3 text-center">Любовница</th>
+              <th class="p-3 text-center">Шериф</th>
+              <th class="p-3 text-center">Доктор</th>
+              <th class="p-3 text-center">Маньяк</th>
+              <th class="p-3 text-center">Камикадзе</th>
+              <th class="p-3 text-center">Мститель</th>
+              <th class="p-3 text-center">Очки</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="bg-white"></tbody>
         </table>
-        
-        <button id="save-btn" class="save-btn" style="display: none;">
-            💾 СОХРАНИТЬ ИЗМЕНЕНИЯ
-        </button>
-    </div>
-    
-    <!-- Модальное окно для редактирования -->
-    <div id="edit-modal" class="modal">
-        <div class="modal-content">
-            <h3 id="modal-title">Редактирование</h3>
-            <input type="text" id="modal-input" placeholder="Введите значение">
-            <div class="modal-buttons">
-                <button class="modal-btn cancel-btn" onclick="closeModal()">Отмена</button>
-                <button class="modal-btn confirm-btn" onclick="confirmEdit()">OK</button>
-            </div>
+      </div>
+
+      <!-- actions -->
+      <div class="mt-4 flex gap-3 items-center justify-between">
+        <div>
+          <button id="add-row-btn" class="hidden inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">➕ Добавить игрока</button>
         </div>
+
+        <div class="flex gap-2">
+          <button id="save-btn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">💾 СОХРАНИТЬ</button>
+          <button id="cancel-btn" class="hidden px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100">Отмена</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer small note -->
+    <footer class="text-xs text-slate-400 mt-3 text-center">
+      Данные подгружаются из <code>data.json</code> на GitHub Pages.
+    </footer>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-md bg-white rounded-xl p-4 shadow">
+      <h3 id="modal-title" class="font-medium mb-2">Редактирование</h3>
+      <input id="modal-input" class="w-full border rounded px-3 py-2 mb-3" type="text" />
+      <div class="flex gap-3 justify-end">
+        <button id="modal-cancel" class="px-4 py-2 rounded bg-red-50 text-red-700">Отмена</button>
+        <button id="modal-ok" class="px-4 py-2 rounded bg-blue-600 text-white">OK</button>
+      </div>
     </div>
-    
-    <script>
-        let tg = Telegram.WebApp;
-        let players = [];
-        let isEditMode = false;
-        let isAdmin = false;
-        let currentEdit = null;
-        let hasChanges = false;
-        
-        // Функция для отладочной информации
-        function updateDebugInfo(message) {
-            const debugDiv = document.getElementById('debug-info');
-            debugDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
-            debugDiv.style.display = 'block';
-            console.log(message);
+  </div>
+
+  <script>
+    // Telegram WebApp
+    const tg = window.Telegram?.WebApp || null;
+    if (tg) {
+      tg.expand?.();
+      try { tg.enableClosingConfirmation?.(); } catch(e) {}
+    }
+
+    // State
+    let players = [];
+    let mode = 'view'; // 'view' | 'edit'
+    let hasChanges = false;
+    let currentEdit = null; // { type: 'nick'|'role'|'place', idx, role }
+    const ROLES = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+
+    // Elements
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const tableEl = document.getElementById('rating-table');
+    const tbody = document.getElementById('table-body');
+    const modeLabel = document.getElementById('mode-label');
+    const saveBtn = document.getElementById('save-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const addRowBtn = document.getElementById('add-row-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const badge = document.getElementById('badge');
+
+    // Modal
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalInput = document.getElementById('modal-input');
+    const modalOk = document.getElementById('modal-ok');
+    const modalCancel = document.getElementById('modal-cancel');
+
+    // Helpers
+    function qparam(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+      loadingEl.classList.add('hidden');
+      tableEl.classList.add('hidden');
+    }
+
+    function hideError() {
+      errorEl.classList.add('hidden');
+    }
+
+    function setMode(m) {
+      mode = m;
+      const isEdit = mode === 'edit';
+      modeLabel.textContent = isEdit ? 'Режим редактирования' : 'Только просмотр';
+      modeLabel.className = isEdit ? 'text-sm text-amber-600' : 'text-sm text-slate-500';
+
+      // show/hide controls
+      if (isEdit) {
+        saveBtn.classList.remove('hidden');
+        cancelBtn.classList.remove('hidden');
+        addRowBtn.classList.remove('hidden');
+      } else {
+        saveBtn.classList.add('hidden');
+        cancelBtn.classList.add('hidden');
+        addRowBtn.classList.add('hidden');
+      }
+    }
+
+    function formatRoleCell(roleData) {
+      const o = roleData?.o ?? 0;
+      const t = roleData?.t ?? 0;
+      return `${o}/${t}`;
+    }
+
+    // load data.json from the same origin (GitHub Pages)
+    async function loadData() {
+      try {
+        hideError();
+        loadingEl.classList.remove('hidden');
+        tableEl.classList.add('hidden');
+
+        // fetch data.json (no absolute URL) — works on GitHub Pages
+        const res = await fetch('data.json', { cache: "no-store" });
+        if (!res.ok) throw new Error('Ошибка HTTP: ' + res.status);
+        const data = await res.json();
+        players = Array.isArray(data) ? data : [];
+        renderTable();
+      } catch (err) {
+        console.error(err);
+        showError('Ошибка загрузки data.json. Попробуйте обновить страницу.');
+        players = [];
+        renderTable(); // still render empty state
+      } finally {
+        loadingEl.classList.add('hidden');
+      }
+    }
+
+    function renderTable() {
+      tbody.innerHTML = '';
+      if (!players || players.length === 0) {
+        const r = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 13;
+        td.className = 'text-center py-6 text-slate-500';
+        td.textContent = 'Нет данных для отображения';
+        r.appendChild(td);
+        tbody.appendChild(r);
+        tableEl.classList.remove('hidden');
+        badge.textContent = '';
+        return;
+      }
+
+      players.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = idx % 2 === 0 ? '' : 'bg-slate-50';
+
+        // place
+        const tdPlace = document.createElement('td');
+        tdPlace.className = 'p-3';
+        tdPlace.textContent = p.place ?? '';
+        if (mode === 'edit') {
+          tdPlace.classList.add('cursor-pointer', 'text-slate-700', 'hover:bg-slate-100');
+          tdPlace.onclick = () => openModal('place', idx, String(p.place ?? ''));
         }
-        
-        // Инициализация WebApp
-        tg.expand();
-        tg.enableClosingConfirmation();
-        updateDebugInfo('WebApp инициализирован');
-        
-        // Загружаем данные из параметров URL
-        function loadDataFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            const dataUrl = params.get('dataUrl');
-            isAdmin = params.get('isAdmin') === 'true';
-            isEditMode = params.get('edit') === 'true' && isAdmin;
-            
-            updateDebugInfo(`Параметры: dataUrl=${dataUrl ? 'есть' : 'нет'}, isAdmin=${isAdmin}, edit=${isEditMode}`);
-            
-            if (dataUrl) {
-                const decodedUrl = decodeURIComponent(dataUrl);
-                updateDebugInfo(`Загрузка данных из: ${decodedUrl}`);
-                
-                // Добавляем timestamp для избежания кеширования
-                const urlWithTimestamp = `${decodedUrl}?t=${Date.now()}`;
-                
-                fetch(urlWithTimestamp)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        updateDebugInfo(`Данные успешно загружены: ${data.length} игроков`);
-                        players = data;
-                        renderTable();
-                    })
-                    .catch(error => {
-                        updateDebugInfo(`Ошибка загрузки данных: ${error}`);
-                        showError('❌ Ошибка загрузки данных из GitHub. Попробуйте позже.');
-                        // Показываем таблицу с пустыми данными
-                        players = [];
-                        renderTable();
-                    });
-            } else {
-                updateDebugInfo('URL данных не указан');
-                showError('URL данных не указан');
-                players = [];
-                renderTable();
-            }
+        tr.appendChild(tdPlace);
+
+        // nick
+        const tdNick = document.createElement('td');
+        tdNick.className = 'p-3';
+        tdNick.textContent = p.nick ?? '';
+        if (mode === 'edit') {
+          tdNick.classList.add('cursor-pointer', 'hover:bg-slate-100');
+          tdNick.onclick = () => openModal('nick', idx, p.nick ?? '');
         }
-        
-        function showError(message) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error-message').innerHTML = message;
-            document.getElementById('error-message').style.display = 'block';
-        }
-        
-        // Отображение таблицы
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            const loading = document.getElementById('loading');
-            const table = document.getElementById('rating-table');
-            const saveBtn = document.getElementById('save-btn');
-            const editModeText = document.getElementById('edit-mode');
-            const errorMessage = document.getElementById('error-message');
-            
-            // Скрываем загрузку и ошибки, показываем таблицу
-            loading.style.display = 'none';
-            errorMessage.style.display = 'none';
-            table.style.display = 'table';
-            
-            tbody.innerHTML = '';
-            
-            if (players.length === 0) {
-                const row = document.createElement('tr');
-                const cell = document.createElement('td');
-                cell.colSpan = 13;
-                cell.textContent = 'Нет данных для отображения';
-                cell.style.textAlign = 'center';
-                cell.style.padding = '20px';
-                cell.style.color = '#666';
-                row.appendChild(cell);
-                tbody.appendChild(row);
-            } else {
-                players.forEach((player, index) => {
-                    const row = document.createElement('tr');
-                    
-                    // Место
-                    const placeCell = document.createElement('td');
-                    placeCell.textContent = player.place || '';
-                    if (isEditMode) {
-                        placeCell.classList.add('editable', 'add-row');
-                        placeCell.onclick = () => editPlace(index);
-                    }
-                    row.appendChild(placeCell);
-                    
-                    // Ник
-                    const nickCell = document.createElement('td');
-                    nickCell.textContent = player.nick || '';
-                    if (isEditMode) {
-                        nickCell.classList.add('editable');
-                        nickCell.onclick = () => editNick(index);
-                    }
-                    row.appendChild(nickCell);
-                    
-                    // Кол. игр
-                    const gamesCell = document.createElement('td');
-                    gamesCell.textContent = player.totalGames || 0;
-                    row.appendChild(gamesCell);
-                    
-                    // Роли
-                    const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
-                    roles.forEach(role => {
-                        const roleCell = document.createElement('td');
-                        const roleData = player[role] || {o: 0, t: 0};
-                        roleCell.textContent = `${roleData.o || 0}/${roleData.t || 0}`;
-                        if (isEditMode) {
-                            roleCell.classList.add('editable');
-                            roleCell.onclick = () => editRole(index, role);
-                        }
-                        row.appendChild(roleCell);
-                    });
-                    
-                    // Очки
-                    const pointsCell = document.createElement('td');
-                    pointsCell.textContent = player.totalPoints || 0;
-                    row.appendChild(pointsCell);
-                    
-                    tbody.appendChild(row);
-                });
-            }
-            
-            // Настройка интерфейса в зависимости от режима
-            if (isEditMode) {
-                saveBtn.style.display = 'block';
-                editModeText.textContent = 'Режим редактирования';
-                editModeText.style.color = '#ff9800';
-                updateDebugInfo('Режим редактирования включен');
-            } else {
-                saveBtn.style.display = 'none';
-                editModeText.textContent = 'Только просмотр';
-                editModeText.style.color = '#666';
-                updateDebugInfo('Режим просмотра');
-            }
-            
-            if (!isAdmin) {
-                editModeText.textContent = 'Только просмотр (не админ)';
-                updateDebugInfo('Пользователь не является администратором');
-            }
-            
-            updateDebugInfo(`Таблица отображена: ${players.length} игроков`);
-        }
-        
-        // Редактирование места (добавление строки)
-        function editPlace(index) {
-            updateDebugInfo(`Добавление новой строки после индекса ${index}`);
-            
-            // Добавляем новую строку после текущей
-            const newPlayer = {
-                place: '',
-                nick: 'Новый игрок',
-                totalGames: 0,
-                totalPoints: 0,
-                мирный: {o: 0, t: 0},
-                мафия: {o: 0, t: 0},
-                дон: {o: 0, t: 0},
-                любовница: {o: 0, t: 0},
-                шериф: {o: 0, t: 0},
-                доктор: {o: 0, t: 0},
-                маньяк: {o: 0, t: 0},
-                камикадзе: {o: 0, t: 0},
-                мститель: {o: 0, t: 0}
-            };
-            
-            players.splice(index + 1, 0, newPlayer);
-            hasChanges = true;
-            updateDebugInfo(`Новый игрок добавлен. Всего игроков: ${players.length}`);
-            renderTable();
-        }
-        
-        // Редактирование ника
-        function editNick(index) {
-            currentEdit = { type: 'nick', index: index };
-            updateDebugInfo(`Редактирование ника игрока ${index}`);
-            showModal('Редактирование ника', players[index].nick || '');
-        }
-        
-        // Редактирование роли
-        function editRole(index, role) {
-            currentEdit = { type: 'role', index: index, role: role };
-            const roleData = players[index][role] || {o: 0, t: 0};
-            updateDebugInfo(`Редактирование роли ${role} для игрока ${index}`);
-            showModal(`Редактирование ${role} (введите очки для добавления)`, '');
-        }
-        
-        // Показать модальное окно
-        function showModal(title, value) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-input').value = value;
-            document.getElementById('edit-modal').style.display = 'flex';
-            document.getElementById('modal-input').focus();
-            updateDebugInfo(`Открыто модальное окно: ${title}`);
-        }
-        
-        // Закрыть модальное окно
-        function closeModal() {
-            document.getElementById('edit-modal').style.display = 'none';
-            currentEdit = null;
-            updateDebugInfo('Модальное окно закрыто');
-        }
-        
-        // Подтверждение редактирования
-        function confirmEdit() {
-            const value = document.getElementById('modal-input').value.trim();
-            updateDebugInfo(`Подтверждение редактирования: ${value}`);
-            
-            if (currentEdit) {
-                if (currentEdit.type === 'nick') {
-                    players[currentEdit.index].nick = value;
-                    updateDebugInfo(`Ник изменен на: ${value}`);
-                } else if (currentEdit.type === 'role') {
-                    // Логика для ролей
-                    const roleData = players[currentEdit.index][currentEdit.role] || {o: 0, t: 0};
-                    
-                    if (value === '123') {
-                        // Откат последнего введения
-                        roleData.o = Math.max(0, roleData.o - (roleData.lastPoints || 0));
-                        roleData.t = Math.max(0, roleData.t - 1);
-                        updateDebugInfo(`Откат роли ${currentEdit.role}`);
-                    } else {
-                        const points = parseInt(value);
-                        if (!isNaN(points)) {
-                            // Сохраняем предыдущее значение для возможного отката
-                            roleData.lastPoints = points;
-                            roleData.o = (roleData.o || 0) + points;
-                            roleData.t = (roleData.t || 0) + 1;
-                            updateDebugInfo(`Добавлены очки ${points} к роли ${currentEdit.role}`);
-                        } else {
-                            updateDebugInfo(`Некорректные очки: ${value}`);
-                        }
-                    }
-                    
-                    players[currentEdit.index][currentEdit.role] = roleData;
-                }
-                
-                // Пересчет общих показателей
-                recalculatePlayer(currentEdit.index);
-                hasChanges = true;
-                updateDebugInfo(`Изменения сохранены, есть несохраненные данные`);
-            }
-            
-            closeModal();
-            renderTable();
-        }
-        
-        // Пересчет игрока
-        function recalculatePlayer(index) {
-            const player = players[index];
-            let totalGames = 0;
-            let totalPoints = 0;
-            
-            const roles = ['мирный', 'мафия', 'дон', 'любовница', 'шериф', 'доктор', 'маньяк', 'камикадзе', 'мститель'];
-            roles.forEach(role => {
-                const roleData = player[role] || {o: 0, t: 0};
-                totalGames += roleData.t || 0;
-                totalPoints += roleData.o || 0;
-            });
-            
-            player.totalGames = totalGames;
-            player.totalPoints = totalPoints;
-            updateDebugInfo(`Пересчет игрока ${index}: игры=${totalGames}, очки=${totalPoints}`);
-        }
-        
-        // Сохранение данных
-        document.getElementById('save-btn').onclick = function() {
-            updateDebugInfo('Нажата кнопка сохранения');
-            
-            if (!hasChanges) {
-                updateDebugInfo('Нет изменений для сохранения');
-                tg.showPopup({
-                    title: 'Сохранение',
-                    message: 'Нет изменений для сохранения',
-                    buttons: [{type: 'ok'}]
-                });
-                return;
-            }
-            
-            tg.showPopup({
-                title: 'Сохранение',
-                message: 'Вы уверены, что хотите сохранить изменения?',
-                buttons: [
-                    {id: 'yes', type: 'default', text: 'Да'},
-                    {type: 'cancel'}
-                ]
-            }, function(btnId) {
-                if (btnId === 'yes') {
-                    // Отправляем данные в бота
-                    const saveBtn = document.getElementById('save-btn');
-                    saveBtn.textContent = '💾 СОХРАНЯЕМ...';
-                    saveBtn.disabled = true;
-                    
-                    updateDebugInfo('Начинается отправка данных...');
-                    
-                    // Логируем данные перед отправкой
-                    updateDebugInfo(`Отправляемые данные: ${players.length} игроков`);
-                    console.log('Отправляемые данные:', players);
-                    console.log('Количество игроков:', players.length);
-                    
-                    if (players.length > 0) {
-                        console.log('Первый игрок:', players[0]);
-                        updateDebugInfo(`Первый игрок: ${players[0].nick} - ${players[0].totalPoints} очков`);
-                    }
-                    
-                    // Проверяем доступность tg.sendData
-                    if (typeof tg.sendData !== 'function') {
-                        updateDebugInfo('❌ ОШИБКА: tg.sendData не доступен!');
-                        console.error('❌ tg.sendData не доступен!');
-                        alert('Ошибка: sendData не доступен');
-                        saveBtn.textContent = '💾 СОХРАНИТЬ ИЗМЕНЕНИЯ';
-                        saveBtn.disabled = false;
-                        return;
-                    }
-                    
-                    updateDebugInfo('✅ tg.sendData доступен, отправляем данные...');
-                    
-                    try {
-                        // Отправляем данные
-                        tg.sendData(JSON.stringify(players));
-                        updateDebugInfo('✅ Данные отправлены через tg.sendData');
-                        
-                        // Меняем кнопку на зеленую
-                        setTimeout(() => {
-                            saveBtn.textContent = '✅ СОХРАНЕНО';
-                            saveBtn.classList.add('saved');
-                            hasChanges = false;
-                            updateDebugInfo('✅ Статус: данные отправлены, ожидаем обработки ботом');
-                        }, 1000);
-                    } catch (error) {
-                        updateDebugInfo(`❌ ОШИБКА при отправке: ${error}`);
-                        console.error('Ошибка при отправке:', error);
-                        saveBtn.textContent = '💾 ОШИБКА - ПОВТОРИТЕ';
-                        saveBtn.disabled = false;
-                    }
-                } else {
-                    updateDebugInfo('Сохранение отменено пользователем');
-                }
-            });
-        };
-        
-        // Обработка нажатия ESC для закрытия модального окна
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
+        tr.appendChild(tdNick);
+
+        // games
+        const tdGames = document.createElement('td');
+        tdGames.className = 'p-3 text-center';
+        tdGames.textContent = p.totalGames ?? 0;
+        tr.appendChild(tdGames);
+
+        // roles
+        ROLES.forEach(role => {
+          const tdRole = document.createElement('td');
+          tdRole.className = 'p-3 text-center';
+          const roleData = p[role] ?? { o: 0, t: 0 };
+          tdRole.textContent = formatRoleCell(roleData);
+          if (mode === 'edit') {
+            tdRole.classList.add('cursor-pointer', 'hover:bg-slate-100');
+            tdRole.onclick = () => openModal('role', idx, `${roleData.o}`, role);
+          }
+          tr.appendChild(tdRole);
         });
-        
-        // Загрузка данных при старте
-        updateDebugInfo('Запуск загрузки данных...');
-        loadDataFromUrl();
-    </script>
+
+        // points
+        const tdPoints = document.createElement('td');
+        tdPoints.className = 'p-3 text-center font-medium';
+        tdPoints.textContent = p.totalPoints ?? 0;
+        tr.appendChild(tdPoints);
+
+        tbody.appendChild(tr);
+      });
+
+      tableEl.classList.remove('hidden');
+      badge.textContent = `${players.length} игрок(ов)`;
+    }
+
+    function openModal(type, idx, value = '', role = null) {
+      currentEdit = { type, idx, role };
+      modalTitle.textContent = type === 'nick' ? 'Редактирование ника' : (type === 'place' ? 'Редактирование места' : `Редактирование ${role}`);
+      modalInput.value = value ?? '';
+      modal.classList.remove('hidden');
+      modalInput.focus();
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      currentEdit = null;
+      modalInput.value = '';
+    }
+
+    function applyModal() {
+      if (!currentEdit) return;
+      const v = modalInput.value.trim();
+      const idx = currentEdit.idx;
+      const p = players[idx] || {};
+      if (currentEdit.type === 'nick') {
+        p.nick = v || p.nick || 'Игрок';
+      } else if (currentEdit.type === 'place') {
+        p.place = v || p.place || '';
+      } else if (currentEdit.type === 'role') {
+        const role = currentEdit.role;
+        const points = parseInt(v);
+        if (!Number.isNaN(points)) {
+          p[role] = p[role] || { o: 0, t: 0 };
+          // здесь логика: добавляем points и увеличиваем t на 1
+          p[role].o = (p[role].o || 0) + points;
+          p[role].t = (p[role].t || 0) + 1;
+        } else {
+          // если пусто или не число — ничего не делаем
+        }
+      }
+      // recalc
+      recalcPlayer(idx);
+      hasChanges = true;
+      renderTable();
+      closeModal();
+    }
+
+    function recalcPlayer(idx) {
+      const p = players[idx];
+      if (!p) return;
+      let totalPoints = 0, totalGames = 0;
+      ROLES.forEach(r => {
+        const d = p[r] || {o:0,t:0};
+        totalPoints += (d.o || 0);
+        totalGames += (d.t || 0);
+      });
+      p.totalPoints = totalPoints;
+      p.totalGames = totalGames;
+    }
+
+    // actions
+    addRowBtn.addEventListener('click', () => {
+      const newPlayer = { place: '', nick: 'Новый игрок', totalGames: 0, totalPoints: 0 };
+      ROLES.forEach(r => newPlayer[r] = { o: 0, t: 0 });
+      players.push(newPlayer);
+      hasChanges = true;
+      renderTable();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      if (!hasChanges) {
+        // небольшая нотификация через Telegram (если доступен)
+        if (tg) tg.showPopup?.({ title: 'Сохранение', message: 'Нет изменений для сохранения', buttons: [{type:'ok'}] });
+        return;
+      }
+
+      // подтверждение
+      if (tg) {
+        tg.showPopup?.({
+          title: 'Сохранение',
+          message: 'Отправить изменения в бота?',
+          buttons: [{ id: 'yes', type: 'default', text: 'Да' }, { type: 'cancel' }]
+        }, (btnId) => {
+          if (btnId === 'yes') doSend();
+        });
+      } else {
+        if (confirm('Отправить изменения?')) doSend();
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      // просто перезагрузим данные
+      loadData();
+      hasChanges = false;
+    });
+
+    function doSend() {
+      try {
+        // отправляем players в бота
+        const payload = JSON.stringify(players);
+        if (tg && typeof tg.sendData === 'function') {
+          tg.sendData(payload);
+          // UI feedback
+          saveBtn.textContent = 'Отправлено ✓';
+          saveBtn.classList.add('opacity-80');
+          setTimeout(() => {
+            saveBtn.textContent = '💾 СОХРАНИТЬ';
+          }, 1500);
+          hasChanges = false;
+        } else {
+          // fallback
+          alert('tg.sendData недоступен. Откройте бота в Telegram.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Ошибка при отправке данных: ' + err.message);
+      }
+    }
+
+    // modal listeners
+    modalOk.addEventListener('click', applyModal);
+    modalCancel.addEventListener('click', closeModal);
+    modalInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyModal(); if (e.key === 'Escape') closeModal(); });
+
+    // refresh
+    refreshBtn.addEventListener('click', loadData);
+
+    // init
+    (function init() {
+      // determine mode from URL: use ?mode=edit to allow edits (bot opens only for admin with this param)
+      const q = qparam('mode');
+      setMode(q === 'edit' ? 'edit' : 'view');
+
+      // load data.json
+      loadData();
+    })();
+
+    // Accessibility: close modal on backdrop click
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  </script>
 </body>
 </html>
