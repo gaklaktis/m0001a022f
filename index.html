@@ -6,7 +6,6 @@
     <title>Рейтинг Мафии</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* СТИЛИ ОСТАЮТСЯ ПРЕЖНИМИ */
         * {
             margin: 0;
             padding: 0;
@@ -172,35 +171,6 @@
             margin: 10px 0;
         }
         
-        .debug-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-size: 12px;
-            color: #856404;
-        }
-        
-        .test-data-panel {
-            background: #e3f2fd;
-            border: 1px solid #90caf9;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-        }
-        
-        .test-btn {
-            background: #ff9800;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        
-        /* Стили для кастомного подтверждения */
         .confirmation-modal {
             display: none;
             position: fixed;
@@ -253,20 +223,6 @@
         <div class="header">
             <h2>🏆 Рейтинг Мафии 🏆</h2>
             <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
-        </div>
-        
-        <!-- Панель отладки -->
-        <div id="debug-info" class="debug-info" style="display: none;">
-            <strong>Отладочная информация:</strong>
-            <div id="debug-content"></div>
-        </div>
-        
-        <!-- Панель тестовых данных (только для отладки) -->
-        <div id="test-panel" class="test-data-panel" style="display: none;">
-            <strong>Тестовые данные (для отладки):</strong><br>
-            <button class="test-btn" onclick="loadTestData()">Загрузить тестовые данные</button>
-            <button class="test-btn" onclick="simulateSave()">Тест сохранения</button>
-            <button class="test-btn" onclick="checkInitData()">Проверить InitData</button>
         </div>
         
         <div id="loading" class="loading">
@@ -338,57 +294,19 @@
         let hasChanges = false;
         let saveCallback = null;
         
-        // Функция для отладочной информации
-        function updateDebugInfo(message) {
-            const debugDiv = document.getElementById('debug-info');
-            const debugContent = document.getElementById('debug-content');
-            const timestamp = new Date().toLocaleTimeString();
-            debugContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-            debugDiv.style.display = 'block';
-            console.log(`[DEBUG] ${message}`);
-            
-            // Ограничиваем количество сообщений в панели отладки
-            const messages = debugContent.children;
-            if (messages.length > 20) {
-                debugContent.removeChild(messages[0]);
-            }
-        }
-        
-        // Проверка InitData
-        function checkInitData() {
-            updateDebugInfo('=== ПРОВЕРКА TELEGRAM INIT DATA ===');
-            updateDebugInfo(`Версия Telegram WebApp: ${tg.version}`);
-            updateDebugInfo(`Platform: ${tg.platform}`);
-            updateDebugInfo(`InitData: ${tg.initData}`);
-            updateDebugInfo(`InitDataUnsafe: ${JSON.stringify(tg.initDataUnsafe)}`);
-            
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                updateDebugInfo(`User ID: ${tg.initDataUnsafe.user.id}`);
-                updateDebugInfo(`Is Admin: ${tg.initDataUnsafe.user.id === 7355212004}`);
-            }
-        }
-        
         // Универсальное подтверждение с поддержкой разных версий Telegram
         function showUniversalConfirm(title, message, callback) {
-            updateDebugInfo('showUniversalConfirm вызван');
-            
-            // В версии 6.0 не поддерживается showPopup, используем кастомное модальное окно
+            // Для версий 6.2+ используем showConfirm если доступен
             if (tg.version && parseFloat(tg.version) >= 6.2) {
-                // Для версий 6.2+ используем showConfirm если доступен
                 if (typeof tg.showConfirm === 'function') {
-                    updateDebugInfo('Используется tg.showConfirm');
-                    // Исправление: showConfirm возвращает boolean, а не строку
                     tg.showConfirm(message, function(result) {
-                        updateDebugInfo(`Результат showConfirm: ${result}`);
-                        // Преобразуем boolean в строку для совместимости
                         callback(result ? 'yes' : null);
                     });
                     return;
                 }
             }
             
-            // Для версий ниже 6.2 или если showConfirm не доступен, используем кастомное модальное окно
-            updateDebugInfo('Используется кастомное модальное окно подтверждения');
+            // Для старых версий используем кастомное модальное окно
             saveCallback = callback;
             document.getElementById('confirmation-modal').style.display = 'flex';
         }
@@ -397,10 +315,6 @@
         function showUniversalAlert(message) {
             if (typeof tg.showAlert === 'function') {
                 tg.showAlert(message);
-            } else {
-                // Если showAlert не доступен, используем кастомное модальное окно или console.log
-                console.log(`ALERT: ${message}`);
-                updateDebugInfo(`ALERT: ${message}`);
             }
         }
         
@@ -408,85 +322,18 @@
         function closeConfirmation(result) {
             document.getElementById('confirmation-modal').style.display = 'none';
             if (saveCallback) {
-                updateDebugInfo(`Результат кастомного подтверждения: ${result}`);
                 saveCallback(result ? 'yes' : null);
                 saveCallback = null;
             }
         }
         
-        // Показываем тестовую панель если нет данных
-        function showTestPanel() {
-            document.getElementById('test-panel').style.display = 'block';
-        }
-        
-        // Загружаем тестовые данные
-        function loadTestData() {
-            updateDebugInfo('Загрузка тестовых данных...');
-            players = [
-                {
-                    place: 1,
-                    nick: 'Тестовый Игрок 1',
-                    totalGames: 10,
-                    totalPoints: 150,
-                    мирный: {o: 50, t: 5},
-                    мафия: {o: 30, t: 2},
-                    дон: {o: 20, t: 1},
-                    любовница: {o: 10, t: 1},
-                    шериф: {o: 15, t: 1},
-                    доктор: {o: 10, t: 0},
-                    маньяк: {o: 10, t: 0},
-                    камикадзе: {o: 5, t: 0},
-                    мститель: {o: 0, t: 0}
-                },
-                {
-                    place: 2,
-                    nick: 'Тестовый Игрок 2',
-                    totalGames: 8,
-                    totalPoints: 120,
-                    мирный: {o: 40, t: 4},
-                    мафия: {o: 25, t: 2},
-                    дон: {o: 15, t: 1},
-                    любовница: {o: 10, t: 1},
-                    шериф: {o: 20, t: 0},
-                    доктор: {o: 10, t: 0},
-                    маньяк: {o: 0, t: 0},
-                    камикадзе: {o: 0, t: 0},
-                    мститель: {o: 0, t: 0}
-                }
-            ];
-            isEditMode = true;
-            isAdmin = true;
-            updateDebugInfo(`Загружено ${players.length} тестовых игроков`);
-            renderTable();
-        }
-        
-        // Тест сохранения
-        function simulateSave() {
-            updateDebugInfo('Тест сохранения данных...');
-            document.getElementById('save-btn').click();
-        }
-        
         // Инициализация WebApp
         tg.expand();
-        updateDebugInfo('WebApp инициализирован');
-        updateDebugInfo(`Версия Telegram WebApp: ${tg.version}`);
         
         // Загружаем данные из параметров URL
         function loadDataFromUrl() {
             const params = new URLSearchParams(window.location.search);
             
-            // Логируем все параметры для отладки
-            updateDebugInfo('=== АНАЛИЗ ПАРАМЕТРОВ URL ===');
-            updateDebugInfo(`Полный URL: ${window.location.href}`);
-            updateDebugInfo(`Параметры поиска: ${window.location.search}`);
-            
-            const allParams = {};
-            for (const [key, value] of params.entries()) {
-                allParams[key] = value;
-                updateDebugInfo(`Параметр: ${key} = ${value}`);
-            }
-            
-            // Пробуем разные варианты имени параметра
             let dataUrl = params.get('dataUrl') || 
                          params.get('dataurl') || 
                          params.get('dataURL');
@@ -496,34 +343,11 @@
                      
             isEditMode = (params.get('edit') === 'true') && isAdmin;
             
-            updateDebugInfo(`Извлеченный dataUrl: ${dataUrl}`);
-            updateDebugInfo(`isAdmin: ${isAdmin}`);
-            updateDebugInfo(`isEditMode: ${isEditMode}`);
-            
-            // Если dataUrl не найден, показываем тестовую панель
-            if (!dataUrl) {
-                updateDebugInfo('❌ dataUrl не найден в параметрах URL');
-                showTestPanel();
-                
-                // Пробуем получить данные из InitData для определения админа
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    const userId = tg.initDataUnsafe.user.id;
-                    updateDebugInfo(`User ID из InitData: ${userId}`);
-                    // Проверяем, является ли пользователь админом
-                    if (userId === 7355212004) {
-                        isAdmin = true;
-                        updateDebugInfo('Пользователь является администратором (из InitData)');
-                    }
-                }
-            }
-            
             if (dataUrl) {
                 const decodedUrl = decodeURIComponent(dataUrl);
-                updateDebugInfo(`Декодированный URL: ${decodedUrl}`);
                 
                 // Добавляем timestamp для избежания кеширования
                 const urlWithTimestamp = `${decodedUrl}?t=${Date.now()}`;
-                updateDebugInfo(`URL с timestamp: ${urlWithTimestamp}`);
                 
                 fetch(urlWithTimestamp)
                     .then(response => {
@@ -533,21 +357,16 @@
                         return response.json();
                     })
                     .then(data => {
-                        updateDebugInfo(`✅ Данные успешно загружены: ${data.length} игроков`);
                         players = data;
                         renderTable();
                     })
                     .catch(error => {
-                        updateDebugInfo(`❌ Ошибка загрузки данных: ${error}`);
                         showUniversalAlert('❌ Ошибка загрузки данных из GitHub. Попробуйте позже.');
-                        showTestPanel();
                         players = [];
                         renderTable();
                     });
             } else {
-                updateDebugInfo('❌ URL данных не указан в параметрах');
-                showUniversalAlert('URL данных не указан. Используйте тестовые данные для проверки.');
-                showTestPanel();
+                showUniversalAlert('URL данных не указан.');
                 players = [];
                 renderTable();
             }
@@ -639,26 +458,19 @@
                 saveBtn.style.display = 'block';
                 editModeText.textContent = 'Режим редактирования';
                 editModeText.style.color = '#ff9800';
-                updateDebugInfo('Режим редактирования включен');
             } else {
                 saveBtn.style.display = 'none';
                 editModeText.textContent = 'Только просмотр';
                 editModeText.style.color = '#666';
-                updateDebugInfo('Режим просмотра');
             }
             
             if (!isAdmin) {
                 editModeText.textContent = 'Только просмотр (не админ)';
-                updateDebugInfo('Пользователь не является администратором');
             }
-            
-            updateDebugInfo(`✅ Таблица отображена: ${players.length} игроков`);
         }
         
         // Редактирование места (добавление строки)
         function editPlace(index) {
-            updateDebugInfo(`Добавление новой строки после индекса ${index}`);
-            
             // Добавляем новую строку после текущей
             const newPlayer = {
                 place: '',
@@ -678,22 +490,18 @@
             
             players.splice(index + 1, 0, newPlayer);
             hasChanges = true;
-            updateDebugInfo(`✅ Новый игрок добавлен. Всего игроков: ${players.length}`);
             renderTable();
         }
         
         // Редактирование ника
         function editNick(index) {
             currentEdit = { type: 'nick', index: index };
-            updateDebugInfo(`✏️ Редактирование ника игрока ${index}`);
             showModal('Редактирование ника', players[index].nick || '');
         }
         
         // Редактирование роли
         function editRole(index, role) {
             currentEdit = { type: 'role', index: index, role: role };
-            const roleData = players[index][role] || {o: 0, t: 0};
-            updateDebugInfo(`✏️ Редактирование роли ${role} для игрока ${index}`);
             showModal(`Редактирование ${role} (введите очки для добавления)`, '');
         }
         
@@ -703,25 +511,21 @@
             document.getElementById('modal-input').value = value;
             document.getElementById('edit-modal').style.display = 'flex';
             document.getElementById('modal-input').focus();
-            updateDebugInfo(`📋 Открыто модальное окно: ${title}`);
         }
         
         // Закрыть модальное окно
         function closeModal() {
             document.getElementById('edit-modal').style.display = 'none';
             currentEdit = null;
-            updateDebugInfo('📋 Модальное окно закрыто');
         }
         
         // Подтверждение редактирования
         function confirmEdit() {
             const value = document.getElementById('modal-input').value.trim();
-            updateDebugInfo(`✅ Подтверждение редактирования: ${value}`);
             
             if (currentEdit) {
                 if (currentEdit.type === 'nick') {
                     players[currentEdit.index].nick = value;
-                    updateDebugInfo(`📝 Ник изменен на: ${value}`);
                 } else if (currentEdit.type === 'role') {
                     // Логика для ролей
                     const roleData = players[currentEdit.index][currentEdit.role] || {o: 0, t: 0};
@@ -730,7 +534,6 @@
                         // Откат последнего введения
                         roleData.o = Math.max(0, roleData.o - (roleData.lastPoints || 0));
                         roleData.t = Math.max(0, roleData.t - 1);
-                        updateDebugInfo(`↩️ Откат роли ${currentEdit.role}`);
                     } else {
                         const points = parseInt(value);
                         if (!isNaN(points)) {
@@ -738,9 +541,6 @@
                             roleData.lastPoints = points;
                             roleData.o = (roleData.o || 0) + points;
                             roleData.t = (roleData.t || 0) + 1;
-                            updateDebugInfo(`➕ Добавлены очки ${points} к роли ${currentEdit.role}`);
-                        } else {
-                            updateDebugInfo(`❌ Некорректные очки: ${value}`);
                         }
                     }
                     
@@ -750,7 +550,6 @@
                 // Пересчет общих показателей
                 recalculatePlayer(currentEdit.index);
                 hasChanges = true;
-                updateDebugInfo(`📊 Изменения сохранены, есть несохраненные данные`);
             }
             
             closeModal();
@@ -772,72 +571,45 @@
             
             player.totalGames = totalGames;
             player.totalPoints = totalPoints;
-            updateDebugInfo(`🔄 Пересчет игрока ${index}: игры=${totalGames}, очки=${totalPoints}`);
         }
         
         // Сохранение данных
         document.getElementById('save-btn').onclick = function() {
-            updateDebugInfo('💾 Нажата кнопка сохранения');
-            
             if (!hasChanges) {
-                updateDebugInfo('ℹ️ Нет изменений для сохранения');
                 showUniversalAlert('Нет изменений для сохранения');
                 return;
             }
             
             // Универсальное подтверждение сохранения
             showUniversalConfirm('Сохранение', 'Вы уверены, что хотите сохранить изменения?', function(btnId) {
-                updateDebugInfo(`🔔 Callback подтверждения вызван с: ${btnId}`);
-                
                 if (btnId === 'yes') {
                     // Отправляем данные в бота
                     const saveBtn = document.getElementById('save-btn');
                     saveBtn.textContent = '💾 СОХРАНЯЕМ...';
                     saveBtn.disabled = true;
                     
-                    updateDebugInfo('🚀 Начинается отправка данных...');
-                    
-                    // Логируем данные перед отправкой
-                    updateDebugInfo(`📤 Отправляемые данные: ${players.length} игроков`);
-                    console.log('Отправляемые данные:', players);
-                    
-                    if (players.length > 0) {
-                        console.log('Первый игрок:', players[0]);
-                        updateDebugInfo(`👤 Первый игрок: ${players[0].nick} - ${players[0].totalPoints} очков`);
-                    }
-                    
                     // Проверяем доступность tg.sendData
                     if (typeof tg.sendData !== 'function') {
-                        updateDebugInfo('❌ ОШИБКА: tg.sendData не доступен!');
-                        console.error('❌ tg.sendData не доступен!');
                         showUniversalAlert('Ошибка: sendData не доступен');
                         saveBtn.textContent = '💾 СОХРАНИТЬ ИЗМЕНЕНИЯ';
                         saveBtn.disabled = false;
                         return;
                     }
                     
-                    updateDebugInfo('✅ tg.sendData доступен, отправляем данные...');
-                    
                     try {
                         // Отправляем данные
                         tg.sendData(JSON.stringify(players));
-                        updateDebugInfo('✅ Данные отправлены через tg.sendData');
                         
                         // Меняем кнопку на зеленую
                         setTimeout(() => {
                             saveBtn.textContent = '✅ СОХРАНЕНО';
                             saveBtn.classList.add('saved');
                             hasChanges = false;
-                            updateDebugInfo('✅ Статус: данные отправлены, ожидаем обработки ботом');
                         }, 1000);
                     } catch (error) {
-                        updateDebugInfo(`❌ ОШИБКА при отправке: ${error}`);
-                        console.error('Ошибка при отправке:', error);
                         saveBtn.textContent = '💾 ОШИБКА - ПОВТОРИТЕ';
                         saveBtn.disabled = false;
                     }
-                } else {
-                    updateDebugInfo('❌ Сохранение отменено пользователем');
                 }
             });
         };
@@ -851,10 +623,7 @@
         });
         
         // Загрузка данных при старте
-        updateDebugInfo('🎬 Запуск загрузки данных...');
-        checkInitData();
         loadDataFromUrl();
     </script>
 </body>
 </html>
-
