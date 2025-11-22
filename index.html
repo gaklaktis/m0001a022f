@@ -6,6 +6,7 @@
     <title>Рейтинг Мафии</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* СТИЛИ ОСТАЮТСЯ ПРЕЖНИМИ */
         * {
             margin: 0;
             padding: 0;
@@ -376,7 +377,12 @@
                 // Для версий 6.2+ используем showConfirm если доступен
                 if (typeof tg.showConfirm === 'function') {
                     updateDebugInfo('Используется tg.showConfirm');
-                    tg.showConfirm(message, callback);
+                    // Исправление: showConfirm возвращает boolean, а не строку
+                    tg.showConfirm(message, function(result) {
+                        updateDebugInfo(`Результат showConfirm: ${result}`);
+                        // Преобразуем boolean в строку для совместимости
+                        callback(result ? 'yes' : null);
+                    });
                     return;
                 }
             }
@@ -402,6 +408,7 @@
         function closeConfirmation(result) {
             document.getElementById('confirmation-modal').style.display = 'none';
             if (saveCallback) {
+                updateDebugInfo(`Результат кастомного подтверждения: ${result}`);
                 saveCallback(result ? 'yes' : null);
                 saveCallback = null;
             }
@@ -780,6 +787,8 @@
             
             // Универсальное подтверждение сохранения
             showUniversalConfirm('Сохранение', 'Вы уверены, что хотите сохранить изменения?', function(btnId) {
+                updateDebugInfo(`🔔 Callback подтверждения вызван с: ${btnId}`);
+                
                 if (btnId === 'yes') {
                     // Отправляем данные в бота
                     const saveBtn = document.getElementById('save-btn');
