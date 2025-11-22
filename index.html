@@ -76,6 +76,11 @@
             color: white;
         }
         
+        .points-cell {
+            background-color: rgba(255, 0, 0, 0.5) !important;
+            font-weight: bold;
+        }
+        
         .save-btn {
             width: 100%;
             padding: 12px;
@@ -216,6 +221,12 @@
             background: #f44336;
             color: white;
         }
+        
+        .modal-info {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -266,6 +277,9 @@
         <div class="modal-content">
             <h3 id="modal-title">Редактирование</h3>
             <input type="text" id="modal-input" placeholder="Введите значение">
+            <div id="modal-info" class="modal-info">
+                <!-- Информация о формате ввода будет заполнена динамически -->
+            </div>
             <div class="modal-buttons">
                 <button class="modal-btn cancel-btn" onclick="closeModal()">Отмена</button>
                 <button class="modal-btn confirm-btn" onclick="confirmEdit()">OK</button>
@@ -444,9 +458,10 @@
                         row.appendChild(roleCell);
                     });
                     
-                    // Очки
+                    // Очки (выделяем красным цветом)
                     const pointsCell = document.createElement('td');
                     pointsCell.textContent = player.totalPoints || 0;
+                    pointsCell.classList.add('points-cell');
                     row.appendChild(pointsCell);
                     
                     tbody.appendChild(row);
@@ -496,19 +511,24 @@
         // Редактирование ника
         function editNick(index) {
             currentEdit = { type: 'nick', index: index };
-            showModal('Редактирование ника', players[index].nick || '');
+            showModal('Редактирование ника', players[index].nick || '', 'Введите новый ник игрока');
         }
         
         // Редактирование роли
         function editRole(index, role) {
             currentEdit = { type: 'role', index: index, role: role };
-            showModal(`Редактирование ${role} (введите очки для добавления)`, '');
+            showModal(
+                `Редактирование ${role}`, 
+                '', 
+                'Формат ввода:<br>• 0-4: добавить очки<br>• 00: откат последнего введения<br>• 000N: заменить на N очков'
+            );
         }
         
         // Показать модальное окно
-        function showModal(title, value) {
+        function showModal(title, value, info) {
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-input').value = value;
+            document.getElementById('modal-info').innerHTML = info || '';
             document.getElementById('edit-modal').style.display = 'flex';
             document.getElementById('modal-input').focus();
         }
@@ -530,17 +550,43 @@
                     // Логика для ролей
                     const roleData = players[currentEdit.index][currentEdit.role] || {o: 0, t: 0};
                     
-                    if (value === '123') {
+                    if (value === '00') {
                         // Откат последнего введения
-                        roleData.o = Math.max(0, roleData.o - (roleData.lastPoints || 0));
-                        roleData.t = Math.max(0, roleData.t - 1);
-                    } else {
-                        const points = parseInt(value);
+                        if (roleData.lastPoints !== undefined) {
+                            roleData.o = Math.max(0, roleData.o - roleData.lastPoints);
+                            roleData.t = Math.max(0, roleData.t - 1);
+                            delete roleData.lastPoints;
+                        } else {
+                            showUniversalAlert('Нет данных для отката');
+                            return;
+                        }
+                    } else if (value.startsWith('000')) {
+                        // Замена значения: 000N заменяет на N очков
+                        const newValue = value.substring(3);
+                        const points = parseInt(newValue);
                         if (!isNaN(points)) {
-                            // Сохраняем предыдущее значение для возможного отката
+                            roleData.o = points;
+                            roleData.t = 1; // Сбрасываем счетчик игр
+                        } else {
+                            showUniversalAlert('Неверный формат. Используйте 000N, где N - число.');
+                            return;
+                        }
+                    } else {
+                        // Обычное добавление очков
+                        const points = parseInt(value);
+                        if (isNaN(points)) {
+                            // Если ничего не введено - считаем как 0
+                            roleData.lastPoints = 0;
+                            roleData.o = (roleData.o || 0) + 0;
+                            roleData.t = (roleData.t || 0) + 1;
+                        } else if (points >= 0 && points <= 4) {
+                            // Валидное значение от 0 до 4
                             roleData.lastPoints = points;
                             roleData.o = (roleData.o || 0) + points;
                             roleData.t = (roleData.t || 0) + 1;
+                        } else {
+                            showUniversalAlert('Введите число от 0 до 4');
+                            return;
                         }
                     }
                     
