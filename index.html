@@ -525,7 +525,7 @@
                 const urlWithTimestamp = `${decodedUrl}?t=${Date.now()}`;
                 updateDebugInfo(`URL с timestamp: ${urlWithTimestamp}`);
                 
-                fetch(urlWithTimestamp)
+                fetch(urlWithTimestamp, { cache: 'no-store' })  // Добавьте опции для no-cache
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
