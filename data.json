@@ -1,5 +1,8 @@
 [
   {
-    "test": "data"
+    "test": "data",
+    "totalPoints": 0,
+    "totalGames": 0,
+    "place": 1
   }
 ]
