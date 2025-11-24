@@ -23,6 +23,14 @@
             height: 100%;
         }
         
+        .header-container {
+            width: 100%;
+            overflow: visible;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+            margin-bottom: 15px;
+        }
+        
         .container {
             max-width: 100%;
             overflow: visible;
@@ -70,7 +78,6 @@
         
         .header {
             text-align: center;
-            margin-bottom: 15px;
             padding: 10px;
             background: white;
             border-radius: 10px;
@@ -305,12 +312,15 @@
         <button class="zoom-btn" onclick="zoomOut()">-</button>
     </div>
     
-    <div class="container" id="main-container">
+    <!-- Отдельный контейнер для шапки -->
+    <div class="header-container" id="header-container">
         <div class="header">
             <h2>🏆 Рейтинг Мафии 🏆</h2>
             <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
         </div>
-        
+    </div>
+    
+    <div class="container" id="main-container">
         <div id="loading" class="loading">
             Загрузка данных...
         </div>
@@ -397,6 +407,7 @@
         // Инициализация масштабирования
         function initZoom() {
             const container = document.getElementById('main-container');
+            const headerContainer = document.getElementById('header-container');
             
             // Показываем элементы управления масштабом
             document.getElementById('zoom-controls').style.display = 'flex';
@@ -457,7 +468,11 @@
             currentScale = scale;
             
             const container = document.getElementById('main-container');
+            const headerContainer = document.getElementById('header-container');
+            
+            // Применяем масштаб к обоим контейнерам
             container.style.transform = `scale(${scale})`;
+            headerContainer.style.transform = `scale(${scale})`;
             
             // Обновляем индикатор масштаба
             const indicator = document.getElementById('zoom-indicator');
@@ -491,7 +506,6 @@
         // Автоматическая подгонка таблицы под экран
         function autoFitTable() {
             const table = document.getElementById('rating-table');
-            const container = document.getElementById('main-container');
             
             if (!table) return;
             
