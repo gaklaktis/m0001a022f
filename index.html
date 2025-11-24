@@ -29,7 +29,7 @@
             transition: transform 0.15s ease-out;
         }
 
-        /* Элементы управления зумом */
+        /* Зум-контролы */
         .zoom-controls {
             position: fixed;
             bottom: 80px;
@@ -39,7 +39,7 @@
             flex-direction: column;
             gap: 10px;
             background: rgba(255, 255, 255, 0.95);
-            padding: 10px;
+            padding: 12px 10px;
             border-radius: 16px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             backdrop-filter: blur(10px);
@@ -78,7 +78,7 @@
             backdrop-filter: blur(8px);
         }
 
-        /* Обёртка для шапки и таблицы — синхронизация ширины */
+        /* Обёртка — гарантирует одинаковую ширину шапки и таблицы */
         .content-wrapper {
             display: flex;
             flex-direction: column;
@@ -88,25 +88,22 @@
             margin: 0 auto;
         }
 
-        /* Шапка */
         .header {
             text-align: center;
             margin-bottom: 16px;
-            padding: 14px 12px;
+            padding: 16px 12px;
             background: white;
             border-radius: 14px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
             width: auto;
-            min-width: calc(13 * 44px + 20px); /* адаптивно под мобильные */
-            font-size: 14px;
+            min-width: calc(13 * 44px + 20px);
         }
 
         .header h2 {
-            font-size: 20px;
-            margin-bottom: 4px;
+            font-size: 22px;
+            margin-bottom: 6px;
         }
 
-        /* Таблица */
         .table-wrapper {
             width: auto;
             min-width: calc(13 * 44px + 20px);
@@ -139,40 +136,21 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         tr:nth-child(even) { background: #f8fbff; }
-        tr:hover { background: #e8f4f8; }
+        tr:hover { background: #e3f2fd; }
 
-        .editable {
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+        .editable { cursor: pointer; transition: background 0.2s; }
+        .editable:hover { background-color: #bbdefb !important; }
+        .add-row { background: #4caf50 !important; color: white; font-weight: bold; }
+        .points-cell { background: rgba(255, 82, 82, 0.75) !important; color: white; font-weight: bold; font-size: 14px; }
 
-        .editable:hover {
-            background-color: #bbdefb !important;
-        }
-
-        .add-row {
-            background: #4caf50 !important;
-            color: white;
-            font-weight: bold;
-        }
-
-        .points-cell {
-            background: rgba(255, 82, 82, 0.75) !important;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        /* Кнопка сохранения */
         .save-btn {
             width: 100%;
             max-width: 400px;
             margin: 20px auto;
-            padding: 14px;
+            padding: 15px;
             background: #4caf50;
             color: white;
             border: none;
@@ -188,7 +166,7 @@
         .save-btn:disabled { background: #9e9e9e; cursor: not-allowed; }
         .save-btn.saved { background: #2e7d32; }
 
-        /* Мобильная адаптация */
+        /* Адаптация под мобильные */
         @media (max-width: 768px) {
             body { padding: 8px; }
 
@@ -198,32 +176,16 @@
                 font-size: 11px;
             }
 
-            .header {
-                min-width: calc(13 * 36px + 20px);
-                padding: 12px 10px;
+            .header, .table-wrapper {
+                min-width: calc(13 * 36px + 16px);
             }
 
-            .header h2 { font-size: 18px; }
+            .header h2 { font-size: 19px; }
 
-            .table-wrapper {
-                min-width: calc(13 * 36px + 20px);
-            }
+            .zoom-controls { bottom: 70px; right: 12px; }
+            .zoom-btn { width: 40px; height: 40px; font-size: 18px; }
 
-            .zoom-controls {
-                bottom: 70px;
-                right: 12px;
-            }
-
-            .zoom-btn {
-                width: 40px;
-                height: 40px;
-                font-size: 18px;
-            }
-
-            .save-btn {
-                font-size: 16px;
-                padding: 13px;
-            }
+            .save-btn { font-size: 16px; padding: 13px; }
         }
 
         @media (max-width: 480px) {
@@ -233,19 +195,20 @@
                 font-size: 10px;
             }
 
-            .header { min-width: calc(13 * 32px + 16px); }
-            .table-wrapper { min-width: calc(13 * 32px + 16px); }
+            .header, .table-wrapper {
+                min-width: calc(13 * 32px + 12px);
+            }
         }
 
-        /* Остальные модальные окна и утилиты */
+        /* Модальные окна и утилиты */
         .loading, .error {
             text-align: center;
             padding: 20px;
             border-radius: 12px;
             margin: 10px 0;
+            background: white;
         }
 
-        .loading { color: #666; background: #fff; }
         .error { color: #d32f2f; background: #ffebee; }
 
         .modal, .confirmation-modal {
@@ -353,7 +316,7 @@
         </button>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- Модальное окно редактирования -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
             <h3 id="modal-title">Редактирование</h3>
@@ -366,6 +329,7 @@
         </div>
     </div>
 
+    <!-- Модальное окно подтверждения -->
     <div id="confirmation-modal" class="confirmation-modal">
         <div class="confirmation-content">
             <h3>Подтверждение</h3>
@@ -378,9 +342,240 @@
     </div>
 
     <script>
-        // Весь ваш JavaScript остаётся без изменений (код из предыдущей версии полностью рабочий)
-        // Вставьте сюда весь <script> из предыдущего ответа — он полностью совместим
-        // (для краткости здесь не дублирую, но он должен быть полностью скопирован)
+        let tg = Telegram.WebApp;
+        let players = [];
+        let isEditMode = false;
+        let isAdmin = false;
+        let currentEdit = null;
+        let hasChanges = false;
+        let saveCallback = null;
+
+        // Зум
+        let currentScale = 1;
+        let isZooming = false;
+        let initialDistance = 0;
+        let lastScale = 1;
+        let zoomEnabled = true;
+        const minScale = 0.5;
+        const maxScale = 3;
+
+        function initZoom() {
+            const container = document.getElementById('main-container');
+            document.getElementById('zoom-controls').style.display = 'flex';
+            container.addEventListener('touchstart', handleTouchStart, { passive: false });
+            container.addEventListener('touchmove', handleTouchMove, { passive: false });
+            container.addEventListener('touchend', handleTouchEnd, { passive: false });
+            container.addEventListener('dblclick', resetZoom);
+            setTimeout(autoFitTable, 100);
+        }
+
+        function handleTouchStart(e) { if (!zoomEnabled || e.touches.length !== 2) return; isZooming = true; initialDistance = getDistance(e.touches[0], e.touches[1]); e.preventDefault(); }
+        function handleTouchMove(e) { if (!isZooming || e.touches.length !== 2) return; const scale = getDistance(e.touches[0], e.touches[1]) / initialDistance; applyZoom(lastScale * scale); e.preventDefault(); }
+        function handleTouchEnd() { if (isZooming) { isZooming = false; lastScale = currentScale; } }
+        function getDistance(t1, t2) { const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY; return Math.hypot(dx, dy); }
+
+        function applyZoom(scale) {
+            scale = Math.max(minScale, Math.min(maxScale, scale));
+            currentScale = scale;
+            document.getElementById('main-container').style.transform = `scale(${scale})`;
+            const ind = document.getElementById('zoom-indicator');
+            ind.textContent = Math.round(scale * 100) + '%';
+            ind.style.display = 'block';
+            clearTimeout(window.zoomIndicatorTimeout);
+            window.zoomIndicatorTimeout = setTimeout(() => ind.style.display = 'none', 2000);
+        }
+
+        function zoomIn() { applyZoom(currentScale + 0.1); lastScale = currentScale; }
+        function zoomOut() { applyZoom(currentScale - 0.1); lastScale = currentScale; }
+        function resetZoom() { autoFitTable(); }
+
+        function autoFitTable() {
+            const table = document.getElementById('rating-table');
+            if (!table) return;
+            const tableWidth = table.scrollWidth;
+            const availableWidth = window.innerWidth - 20;
+            let scale = tableWidth > availableWidth ? availableWidth / tableWidth : 1;
+            scale = Math.max(minScale, scale);
+            applyZoom(scale);
+            lastScale = currentScale;
+        }
+
+        function showUniversalConfirm(title, message, callback) {
+            if (tg.version && parseFloat(tg.version) >= 6.2 && typeof tg.showConfirm === 'function') {
+                tg.showConfirm(message, res => callback(res ? 'yes' : null));
+                return;
+            }
+            saveCallback = callback;
+            document.getElementById('confirmation-modal').style.display = 'flex';
+        }
+
+        function showUniversalAlert(msg) { if (typeof tg.showAlert === 'function') tg.showAlert(msg); }
+        function closeConfirmation(result) {
+            document.getElementById('confirmation-modal').style.display = 'none';
+            if (saveCallback) { saveCallback(result ? 'yes' : null); saveCallback = null; }
+        }
+
+        tg.expand();
+
+        function loadDataFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const dataUrl = params.get('dataUrl') || params.get('dataurl') || params.get('dataURL');
+            isAdmin = params.get('isAdmin') === 'true' || params.get('isadmin') === 'true';
+            isEditMode = (params.get('edit') === 'true') && isAdmin;
+
+            if (!dataUrl) { showUniversalAlert('URL данных не указан.'); renderTable(); return; }
+
+            fetch(`${decodeURIComponent(dataUrl)}?t=${Date.now()}`)
+                .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(data => { players = data; renderTable(); })
+                .catch(() => { showUniversalAlert('Ошибка загрузки данных'); renderTable(); });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const table = document.getElementById('rating-table');
+            const saveBtn = document.getElementById('save-btn');
+            const editModeText = document.getElementById('edit-mode');
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            table.style.display = 'table';
+            tbody.innerHTML = '';
+
+            if (players.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 13; cell.textContent = 'Нет данных'; cell.style.padding = '30px'; cell.style.color = '#999';
+                row.appendChild(cell); tbody.appendChild(row);
+            } else {
+                players.forEach((p, i) => {
+                    const tr = document.createElement('tr');
+
+                    // Место (добавить строку)
+                    const placeTd = document.createElement('td');
+                    placeTd.textContent = p.place || '';
+                    if (isEditMode) { placeTd.classList.add('editable', 'add-row'); placeTd.onclick = () => editPlace(i); }
+                    tr.appendChild(placeTd);
+
+                    // Ник
+                    const nickTd = document.createElement('td');
+                    nickTd.textContent = p.nick || '';
+                    if (isEditMode) { nickTd.classList.add('editable'); nickTd.onclick = () => editNick(i); }
+                    tr.appendChild(nickTd);
+
+                    // Игры
+                    tr.appendChild(Object.assign(document.createElement('td'), { textContent: p.totalGames || 0 }));
+
+                    // Роли
+                    const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+                    roles.forEach(r => {
+                        const td = document.createElement('td');
+                        const d = p[r] || {o:0,t:0};
+                        td.textContent = `${d.o||0}/${d.t||0}`;
+                        if (isEditMode) { td.classList.add('editable'); td.onclick = () => editRole(i, r); }
+                        tr.appendChild(td);
+                    });
+
+                    // Очки
+                    const pointsTd = document.createElement('td');
+                    pointsTd.textContent = p.totalPoints || 0;
+                    pointsTd.classList.add('points-cell');
+                    tr.appendChild(pointsTd);
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            saveBtn.style.display = isEditMode ? 'block' : 'none';
+            editModeText.textContent = isEditMode ? 'Режим редактирования' : 'Только просмотр';
+            editModeText.style.color = isEditMode ? '#ff9800' : '#666';
+
+            setTimeout(initZoom, 100);
+        }
+
+        function editPlace(i) {
+            const newPlayer = { place: '', nick: 'Новый игрок', totalGames: 0, totalPoints: 0,
+                мирный:{o:0,t:0}, мафия:{o:0,t:0}, дон:{o:0,t:0}, любовница:{o:0,t:0},
+                шериф:{o:0,t:0}, доктор:{o:0,t:0}, маньяк:{o:0,t:0}, камикадзе:{o:0,t:0}, мститель:{o:0,t:0} };
+            players.splice(i + 1, 0, newPlayer);
+            hasChanges = true;
+            renderTable();
+        }
+
+        function editNick(i) { currentEdit = {type:'nick', index:i}; showModal('Ник', players[i].nick || '', 'Введите ник'); }
+        function editRole(i, role) { currentEdit = {type:'role', index:i, role}; showModal(`Роль: ${role}`, '', '0–4 — добавить очки<br>00 — откат<br>000N — заменить очки'); }
+
+        function showModal(title, value, info) {
+            zoomEnabled = false;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-input').value = value;
+            document.getElementById('modal-info').innerHTML = info || '';
+            document.getElementById('edit-modal').style.display = 'flex';
+            document.getElementById('modal-input').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            currentEdit = null;
+            setTimeout(() => zoomEnabled = true, 100);
+        }
+
+        function confirmEdit() {
+            const val = document.getElementById('modal-input').value.trim();
+            if (!currentEdit) return;
+
+            if (currentEdit.type === 'nick') {
+                players[currentEdit.index].nick = val;
+            } else if (currentEdit.type === 'role') {
+                const data = players[currentEdit.index][currentEdit.role] || {o:0,t:0};
+                if (val === '00' && data.lastPoints !== undefined) {
+                    data.o = Math.max(0, data.o - data.lastPoints);
+                    data.t = Math.max(0, data.t - 1);
+                    delete data.lastPoints;
+                } else if (val.startsWith('000')) {
+                    const n = parseInt(val.slice(3));
+                    if (!isNaN(n)) data.o = n;
+                } else {
+                    const pts = parseInt(val);
+                    if (isNaN(pts) || pts < 0 || pts > 4) { showUniversalAlert('Введите 0–4'); closeModal(); return; }
+                    data.lastPoints = pts;
+                    data.o = (data.o || 0) + pts;
+                    data.t = (data.t || 0) + 1;
+                }
+                players[currentEdit.index][currentEdit.role] = data;
+                recalculatePlayer(currentEdit.index);
+            }
+
+            hasChanges = true;
+            closeModal();
+            renderTable();
+        }
+
+        function recalculatePlayer(i) {
+            const p = players[i];
+            let games = 0, points = 0;
+            const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+            roles.forEach(r => { const d = p[r] || {o:0,t:0}; games += d.t||0; points += d.o||0; });
+            p.totalGames = games; p.totalPoints = points;
+        }
+
+        document.getElementById('save-btn').onclick = () => {
+            if (!hasChanges) return showUniversalAlert('Нет изменений');
+            showUniversalConfirm('Сохранение', 'Сохранить изменения?', res => {
+                if (res !== 'yes') return;
+                const btn = document.getElementById('save-btn');
+                btn.textContent = 'СОХРАНЯЕМ...'; btn.disabled = true;
+                if (typeof tg.sendData !== 'function') { showUniversalAlert('sendData недоступен'); btn.textContent = 'СОХРАНИТЬ'; btn.disabled = false; return; }
+                tg.sendData(JSON.stringify(players));
+                setTimeout(() => { btn.textContent = 'СОХРАНЕНО'; btn.classList.add('saved'); hasChanges = false; }, 1000);
+            });
+        };
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeConfirmation(false); } });
+        window.addEventListener('orientationchange', () => setTimeout(autoFitTable, 300));
+        window.addEventListener('resize', () => setTimeout(autoFitTable, 100));
+
+        loadDataFromUrl();
     </script>
 </body>
 </html>
