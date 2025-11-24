@@ -68,17 +68,21 @@
             background: #ff9800;
         }
         
-		.header {
-			text-align: center;
-			margin-bottom: 15px;
-			padding: 10px;
-			background: white;
-			border-radius: 10px;
-			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-			width: 100%;
-			display: table;       /* Новое */
-			table-layout: fixed;  /* Новое */
-		}
+        .header {
+            width: 100%;
+            display: block;
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-inner {
+            min-width: max-content;   /* растягивается как таблица */
+            text-align: center;
+        }
         
         table {
             width: 100%;
@@ -309,8 +313,10 @@
     
     <div class="container" id="main-container">
         <div class="header">
-            <h2>🏆 Рейтинг Мафии 🏆</h2>
-            <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
+            <div class="header-inner">
+                <h2>🏆 Рейтинг Мафии 🏆</h2>
+                <p id="edit-mode" style="color: #666; margin-top: 5px;">Загрузка...</p>
+            </div>
         </div>
         
         <div id="loading" class="loading">
