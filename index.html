@@ -72,6 +72,7 @@
             background: white;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 100%;
         }
         
         table {
@@ -83,7 +84,6 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             margin-bottom: 15px;
             font-size: 12px;
-            transform-origin: 0 0;
         }
         
         th, td {
@@ -284,6 +284,11 @@
             font-size: 12px;
             z-index: 100;
         }
+        
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
@@ -311,28 +316,30 @@
             Ошибка загрузки данных
         </div>
         
-        <table id="rating-table" style="display: none;">
-            <thead>
-                <tr>
-                    <th>Место</th>
-                    <th>Ник</th>
-                    <th>Игры</th>
-                    <th>Мирный</th>
-                    <th>Мафия</th>
-                    <th>Дон</th>
-                    <th>Любовница</th>
-                    <th>Шериф</th>
-                    <th>Доктор</th>
-                    <th>Маньяк</th>
-                    <th>Камикадзе</th>
-                    <th>Мститель</th>
-                    <th>Очки</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                <!-- Данные будут заполнены JavaScript -->
-            </tbody>
-        </table>
+        <div class="table-wrapper">
+            <table id="rating-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Место</th>
+                        <th>Ник</th>
+                        <th>Игры</th>
+                        <th>Мирный</th>
+                        <th>Мафия</th>
+                        <th>Дон</th>
+                        <th>Любовница</th>
+                        <th>Шериф</th>
+                        <th>Доктор</th>
+                        <th>Маньяк</th>
+                        <th>Камикадзе</th>
+                        <th>Мститель</th>
+                        <th>Очки</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Данные будут заполнены JavaScript -->
+                </tbody>
+            </table>
+        </div>
         
         <button id="save-btn" class="save-btn" style="display: none;">
             💾 СОХРАНИТЬ ИЗМЕНЕНИЯ
@@ -385,7 +392,6 @@
         // Инициализация масштабирования
         function initZoom() {
             const container = document.getElementById('main-container');
-            const table = document.getElementById('rating-table');
             
             // Показываем элементы управления масштабом
             document.getElementById('zoom-controls').style.display = 'flex';
