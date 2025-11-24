@@ -17,7 +17,10 @@
             background: #f5f5f5;
             padding: 10px;
             touch-action: pan-x pan-y;
-            overflow-x: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
+            width: 100%;
+            height: 100%;
         }
         
         .container {
@@ -287,7 +290,7 @@
         
         .table-wrapper {
             width: 100%;
-            overflow-x: auto;
+            overflow: visible;
         }
     </style>
 </head>
@@ -388,6 +391,8 @@
         let initialDistance = 0;
         let lastScale = 1;
         let zoomEnabled = true;
+        let minScale = 0.5;
+        let maxScale = 3;
         
         // Инициализация масштабирования
         function initZoom() {
@@ -404,12 +409,10 @@
             // Двойной тап для сброса масштаба
             container.addEventListener('dblclick', resetZoom);
             
-            // Автоматическое масштабирование при загрузке для мобильных
-            if (window.innerWidth < 768) {
-                setTimeout(() => {
-                    autoFitTable();
-                }, 500);
-            }
+            // Автоматическое масштабирование при загрузке
+            setTimeout(() => {
+                autoFitTable();
+            }, 100);
         }
         
         // Обработка начала касания
@@ -450,7 +453,7 @@
         // Применение масштаба
         function applyZoom(scale) {
             // Ограничиваем масштаб
-            scale = Math.max(0.5, Math.min(3, scale));
+            scale = Math.max(minScale, Math.min(maxScale, scale));
             currentScale = scale;
             
             const container = document.getElementById('main-container');
@@ -482,8 +485,7 @@
         
         // Сброс масштаба
         function resetZoom() {
-            applyZoom(1);
-            lastScale = 1;
+            autoFitTable();
         }
         
         // Автоматическая подгонка таблицы под экран
@@ -494,13 +496,20 @@
             if (!table) return;
             
             const tableWidth = table.scrollWidth;
-            const containerWidth = container.clientWidth;
+            const availableWidth = window.innerWidth - 20; // Учитываем padding body
             
-            if (tableWidth > containerWidth) {
-                const scale = containerWidth / tableWidth * 0.9; // 90% от доступной ширины
-                applyZoom(scale);
-                lastScale = currentScale;
+            let scale = 1;
+            
+            // Если таблица шире доступной ширины, уменьшаем масштаб
+            if (tableWidth > availableWidth) {
+                scale = availableWidth / tableWidth;
             }
+            
+            // Ограничиваем минимальный масштаб
+            scale = Math.max(minScale, scale);
+            
+            applyZoom(scale);
+            lastScale = currentScale;
         }
         
         // Универсальное подтверждение с поддержкой разных версий Telegram
@@ -884,9 +893,7 @@
         
         // Обработка изменения размера окна
         window.addEventListener('resize', function() {
-            if (window.innerWidth < 768 && currentScale === 1) {
-                setTimeout(autoFitTable, 100);
-            }
+            setTimeout(autoFitTable, 100);
         });
     </script>
 </body>
