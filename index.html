@@ -78,7 +78,6 @@
             backdrop-filter: blur(8px);
         }
 
-        /* Обёртка — гарантирует одинаковую ширину шапки и таблицы */
         .content-wrapper {
             display: flex;
             flex-direction: column;
@@ -146,10 +145,16 @@
         .add-row { background: #4caf50 !important; color: white; font-weight: bold; }
         .points-cell { background: rgba(255, 82, 82, 0.75) !important; color: white; font-weight: bold; font-size: 14px; }
 
-        .save-btn {
-            width: 100%;
-            max-width: 400px;
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
             margin: 20px auto;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .save-btn, .refresh-btn {
             padding: 15px;
             background: #4caf50;
             color: white;
@@ -162,45 +167,25 @@
             transition: all 0.2s;
         }
 
+        .refresh-btn {
+            background: #2196F3;
+        }
+
         .save-btn:hover { background: #43a047; }
-        .save-btn:disabled { background: #9e9e9e; cursor: not-allowed; }
+        .refresh-btn:hover { background: #1976d2; }
+        .save-btn:disabled, .refresh-btn:disabled { background: #9e9e9e; cursor: not-allowed; }
         .save-btn.saved { background: #2e7d32; }
 
-        /* Адаптация под мобильные */
         @media (max-width: 768px) {
             body { padding: 8px; }
-
-            th, td {
-                min-width: 36px;
-                padding: 8px 4px;
-                font-size: 11px;
-            }
-
-            .header, .table-wrapper {
-                min-width: calc(13 * 36px + 16px);
-            }
-
+            th, td { min-width: 36px; padding: 8px 4px; font-size: 11px; }
+            .header, .table-wrapper { min-width: calc(13 * 36px + 16px); }
             .header h2 { font-size: 19px; }
-
             .zoom-controls { bottom: 70px; right: 12px; }
             .zoom-btn { width: 40px; height: 40px; font-size: 18px; }
-
-            .save-btn { font-size: 16px; padding: 13px; }
+            .save-btn, .refresh-btn { font-size: 16px; padding: 13px; }
         }
 
-        @media (max-width: 480px) {
-            th, td {
-                min-width: 32px;
-                padding: 6px 3px;
-                font-size: 10px;
-            }
-
-            .header, .table-wrapper {
-                min-width: calc(13 * 32px + 12px);
-            }
-        }
-
-        /* Модальные окна и утилиты */
         .loading, .error {
             text-align: center;
             padding: 20px;
@@ -274,7 +259,7 @@
     <div class="zoom-controls" id="zoom-controls" style="display: none;">
         <button class="zoom-btn" onclick="zoomIn()">+</button>
         <button class="zoom-btn zoom-reset" onclick="resetZoom()">Reset</button>
-        <button class="zoom-btn" onclick="zoomOut()">-</button>
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
     </div>
 
     <div class="container" id="main-container">
@@ -309,14 +294,19 @@
                     <tbody id="table-body"></tbody>
                 </table>
             </div>
-        </div>
 
-        <button id="save-btn" class="save-btn" style="display: none;">
-            СОХРАНИТЬ ИЗМЕНЕНИЯ
-        </button>
+            <div class="btn-group">
+                <button id="save-btn" class="save-btn" style="display: none;">
+                    СОХРАНИТЬ ИЗМЕНЕНИЯ
+                </button>
+                <button id="refresh-btn" class="refresh-btn">
+                    ОБНОВИТЬ ДАННЫЕ
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- Модальное окно редактирования -->
+    <!-- Модальные окна -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
             <h3 id="modal-title">Редактирование</h3>
@@ -329,7 +319,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно подтверждения -->
     <div id="confirmation-modal" class="confirmation-modal">
         <div class="confirmation-content">
             <h3>Подтверждение</h3>
@@ -349,8 +338,9 @@
         let currentEdit = null;
         let hasChanges = false;
         let saveCallback = null;
+        let currentDataUrl = '';
 
-        // Зум
+        // === ЗУМ ===
         let currentScale = 1;
         let isZooming = false;
         let initialDistance = 0;
@@ -362,16 +352,13 @@
         function initZoom() {
             const container = document.getElementById('main-container');
             document.getElementById('zoom-controls').style.display = 'flex';
-            container.addEventListener('touchstart', handleTouchStart, { passive: false });
-            container.addEventListener('touchmove', handleTouchMove, { passive: false });
-            container.addEventListener('touchend', handleTouchEnd, { passive: false });
+            container.addEventListener('touchstart', e => { if (e.touches.length === 2) { isZooming = true; initialDistance = getDistance(e.touches[0], e.touches[1]); e.preventDefault(); } }, { passive: false });
+            container.addEventListener('touchmove', e => { if (isZooming && e.touches.length === 2) { const scale = getDistance(e.touches[0], e.touches[1]) / initialDistance; applyZoom(lastScale * scale); e.preventDefault(); } }, { passive: false });
+            container.addEventListener('touchend', () => { if (isZooming) { isZooming = false; lastScale = currentScale; } });
             container.addEventListener('dblclick', resetZoom);
             setTimeout(autoFitTable, 100);
         }
 
-        function handleTouchStart(e) { if (!zoomEnabled || e.touches.length !== 2) return; isZooming = true; initialDistance = getDistance(e.touches[0], e.touches[1]); e.preventDefault(); }
-        function handleTouchMove(e) { if (!isZooming || e.touches.length !== 2) return; const scale = getDistance(e.touches[0], e.touches[1]) / initialDistance; applyZoom(lastScale * scale); e.preventDefault(); }
-        function handleTouchEnd() { if (isZooming) { isZooming = false; lastScale = currentScale; } }
         function getDistance(t1, t2) { const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY; return Math.hypot(dx, dy); }
 
         function applyZoom(scale) {
@@ -388,47 +375,83 @@
         function zoomIn() { applyZoom(currentScale + 0.1); lastScale = currentScale; }
         function zoomOut() { applyZoom(currentScale - 0.1); lastScale = currentScale; }
         function resetZoom() { autoFitTable(); }
-
         function autoFitTable() {
             const table = document.getElementById('rating-table');
             if (!table) return;
             const tableWidth = table.scrollWidth;
-            const availableWidth = window.innerWidth - 20;
+            const availableWidth = window.innerWidth - 30;
             let scale = tableWidth > availableWidth ? availableWidth / tableWidth : 1;
             scale = Math.max(minScale, scale);
             applyZoom(scale);
             lastScale = currentScale;
         }
 
-        function showUniversalConfirm(title, message, callback) {
-            if (tg.version && parseFloat(tg.version) >= 6.2 && typeof tg.showConfirm === 'function') {
-                tg.showConfirm(message, res => callback(res ? 'yes' : null));
-                return;
-            }
-            saveCallback = callback;
-            document.getElementById('confirmation-modal').style.display = 'flex';
-        }
-
-        function showUniversalAlert(msg) { if (typeof tg.showAlert === 'function') tg.showAlert(msg); }
-        function closeConfirmation(result) {
-            document.getElementById('confirmation-modal').style.display = 'none';
-            if (saveCallback) { saveCallback(result ? 'yes' : null); saveCallback = null; }
-        }
-
         tg.expand();
 
+        // === МОЩНЫЙ ОБХОД КЭША ===
         function loadDataFromUrl() {
             const params = new URLSearchParams(window.location.search);
-            const dataUrl = params.get('dataUrl') || params.get('dataurl') || params.get('dataURL');
+            let dataUrl = params.get('dataUrl') || params.get('dataurl') || params.get('dataURL');
             isAdmin = params.get('isAdmin') === 'true' || params.get('isadmin') === 'true';
             isEditMode = (params.get('edit') === 'true') && isAdmin;
 
-            if (!dataUrl) { showUniversalAlert('URL данных не указан.'); renderTable(); return; }
+            if (!dataUrl) {
+                showAlert('URL данных не указан.');
+                renderTable();
+                return;
+            }
 
-            fetch(`${decodeURIComponent(dataUrl)}?t=${Date.now()}`)
-                .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-                .then(data => { players = data; renderTable(); })
-                .catch(() => { showUniversalAlert('Ошибка загрузки данных'); renderTable(); });
+            dataUrl = decodeURIComponent(dataUrl);
+            currentDataUrl = dataUrl.split('?')[0]; // чистый URL без параметров
+
+            const bust = Date.now();
+            const finalUrl = `${currentDataUrl}?ts=${bust}&_=${bust}&nocache=${bust}&prevent_cache=${bust}&v=${bust}`;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('rating-table').style.display = 'none';
+
+            fetch(finalUrl, {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            })
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then(data => {
+                players = data;
+                renderTable();
+                console.log("Данные обновлены мгновенно!");
+            })
+            .catch(err => {
+                console.error("Ошибка загрузки:", err);
+                showAlert('Не удалось загрузить данные. Попробуйте "Обновить".');
+                renderTable();
+            });
+        }
+
+        function showAlert(msg) {
+            if (typeof tg.showAlert === 'function') tg.showAlert(msg);
+            else alert(msg);
+        }
+
+        function showConfirm(title, msg, callback) {
+            if (tg.showConfirm) {
+                tg.showConfirm(msg, res => callback(res));
+            } else {
+                saveCallback = callback;
+                document.getElementById('confirmation-modal').style.display = 'flex';
+            }
+        }
+
+        function closeConfirmation(result) {
+            document.getElementById('confirmation-modal').style.display = 'none';
+            if (saveCallback) { saveCallback(result); saveCallback = null; }
         }
 
         function renderTable() {
@@ -438,51 +461,46 @@
             const editModeText = document.getElementById('edit-mode');
 
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('error-message').style.display = 'none';
             table.style.display = 'table';
             tbody.innerHTML = '';
 
             if (players.length === 0) {
-                const row = document.createElement('tr');
-                const cell = document.createElement('td');
-                cell.colSpan = 13; cell.textContent = 'Нет данных'; cell.style.padding = '30px'; cell.style.color = '#999';
-                row.appendChild(cell); tbody.appendChild(row);
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 13;
+                cell.textContent = 'Нет данных';
+                cell.style.padding = '30px';
+                cell.style.color = '#999';
             } else {
                 players.forEach((p, i) => {
-                    const tr = document.createElement('tr');
+                    const tr = tbody.insertRow();
 
                     // Место (добавить строку)
-                    const placeTd = document.createElement('td');
+                    const placeTd = tr.insertCell();
                     placeTd.textContent = p.place || '';
-                    if (isEditMode) { placeTd.classList.add('editable', 'add-row'); placeTd.onclick = () => editPlace(i); }
-                    tr.appendChild(placeTd);
+                    if (isEditMode) {
+                        placeTd.classList.add('editable', 'add-row');
+                        placeTd.onclick = () => editPlace(i);
+                    }
 
                     // Ник
-                    const nickTd = document.createElement('td');
+                    const nickTd = tr.insertCell();
                     nickTd.textContent = p.nick || '';
                     if (isEditMode) { nickTd.classList.add('editable'); nickTd.onclick = () => editNick(i); }
-                    tr.appendChild(nickTd);
 
-                    // Игры
-                    tr.appendChild(Object.assign(document.createElement('td'), { textContent: p.totalGames || 0 }));
+                    tr.insertCell().textContent = p.totalGames || 0;
 
-                    // Роли
                     const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
                     roles.forEach(r => {
-                        const td = document.createElement('td');
+                        const td = tr.insertCell();
                         const d = p[r] || {o:0,t:0};
                         td.textContent = `${d.o||0}/${d.t||0}`;
                         if (isEditMode) { td.classList.add('editable'); td.onclick = () => editRole(i, r); }
-                        tr.appendChild(td);
                     });
 
-                    // Очки
-                    const pointsTd = document.createElement('td');
+                    const pointsTd = tr.insertCell();
                     pointsTd.textContent = p.totalPoints || 0;
                     pointsTd.classList.add('points-cell');
-                    tr.appendChild(pointsTd);
-
-                    tbody.appendChild(tr);
                 });
             }
 
@@ -502,14 +520,14 @@
             renderTable();
         }
 
-        function editNick(i) { currentEdit = {type:'nick', index:i}; showModal('Ник', players[i].nick || '', 'Введите ник'); }
-        function editRole(i, role) { currentEdit = {type:'role', index:i, role}; showModal(`Роль: ${role}`, '', '0–4 — добавить очки<br>00 — откат<br>000N — заменить очки'); }
+        function editNick(i) { currentEdit = {type:'nick', index:i}; showModal('Ник', players[i].nick || '', ''); }
+        function editRole(i, role) { currentEdit = {type:'role', index:i, role}; showModal(`Роль: ${role}`, '', '0–4 — добавить очки<br>00 — откат<br>000N — заменить'); }
 
         function showModal(title, value, info) {
             zoomEnabled = false;
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-input').value = value;
-            document.getElementById('modal-info').innerHTML = info || '';
+            document.getElementById('modal-info').innerHTML = info;
             document.getElementById('edit-modal').style.display = 'flex';
             document.getElementById('modal-input').focus();
         }
@@ -537,7 +555,7 @@
                     if (!isNaN(n)) data.o = n;
                 } else {
                     const pts = parseInt(val);
-                    if (isNaN(pts) || pts < 0 || pts > 4) { showUniversalAlert('Введите 0–4'); closeModal(); return; }
+                    if (isNaN(pts) || pts < 0 || pts > 4) { showAlert('Введите 0–4'); closeModal(); return; }
                     data.lastPoints = pts;
                     data.o = (data.o || 0) + pts;
                     data.t = (data.t || 0) + 1;
@@ -560,21 +578,30 @@
         }
 
         document.getElementById('save-btn').onclick = () => {
-            if (!hasChanges) return showUniversalAlert('Нет изменений');
-            showUniversalConfirm('Сохранение', 'Сохранить изменения?', res => {
-                if (res !== 'yes') return;
+            if (!hasChanges) return showAlert('Нет изменений');
+            showConfirm('Сохранение', 'Сохранить все изменения?', confirmed => {
+                if (!confirmed) return;
                 const btn = document.getElementById('save-btn');
                 btn.textContent = 'СОХРАНЯЕМ...'; btn.disabled = true;
-                if (typeof tg.sendData !== 'function') { showUniversalAlert('sendData недоступен'); btn.textContent = 'СОХРАНИТЬ'; btn.disabled = false; return; }
                 tg.sendData(JSON.stringify(players));
-                setTimeout(() => { btn.textContent = 'СОХРАНЕНО'; btn.classList.add('saved'); hasChanges = false; }, 1000);
+                setTimeout(() => {
+                    btn.textContent = 'СОХРАНЕНО!';
+                    btn.classList. add('saved');
+                    hasChanges = false;
+                    setTimeout(() => loadDataFromUrl(), 1500); // Автообновление через 1.5 сек
+                }, 800);
             });
+        };
+
+        document.getElementById('refresh-btn').onclick = () => {
+            loadDataFromUrl();
         };
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeConfirmation(false); } });
         window.addEventListener('orientationchange', () => setTimeout(autoFitTable, 300));
         window.addEventListener('resize', () => setTimeout(autoFitTable, 100));
 
+        // Старт
         loadDataFromUrl();
     </script>
 </body>
