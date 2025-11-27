@@ -78,7 +78,6 @@
             backdrop-filter: blur(8px);
         }
 
-        /* Обёртка — гарантирует одинаковую ширину шапки и таблицы */
         .content-wrapper {
             display: flex;
             flex-direction: column;
@@ -102,6 +101,18 @@
         .header h2 {
             font-size: 22px;
             margin-bottom: 6px;
+        }
+
+        .lock-message {
+            background: #fff3e0;
+            color: #e65100;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 12px auto;
+            max-width: 400px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .table-wrapper {
@@ -166,41 +177,21 @@
         .save-btn:disabled { background: #9e9e9e; cursor: not-allowed; }
         .save-btn.saved { background: #2e7d32; }
 
-        /* Адаптация под мобильные */
         @media (max-width: 768px) {
             body { padding: 8px; }
-
-            th, td {
-                min-width: 36px;
-                padding: 8px 4px;
-                font-size: 11px;
-            }
-
-            .header, .table-wrapper {
-                min-width: calc(13 * 36px + 16px);
-            }
-
+            th, td { min-width: 36px; padding: 8px 4px; font-size: 11px; }
+            .header, .table-wrapper { min-width: calc(13 * 36px + 16px); }
             .header h2 { font-size: 19px; }
-
             .zoom-controls { bottom: 70px; right: 12px; }
             .zoom-btn { width: 40px; height: 40px; font-size: 18px; }
-
             .save-btn { font-size: 16px; padding: 13px; }
         }
 
         @media (max-width: 480px) {
-            th, td {
-                min-width: 32px;
-                padding: 6px 3px;
-                font-size: 10px;
-            }
-
-            .header, .table-wrapper {
-                min-width: calc(13 * 32px + 12px);
-            }
+            th, td { min-width: 32px; padding: 6px 3px; font-size: 10px; }
+            .header, .table-wrapper { min-width: calc(13 * 32px + 12px); }
         }
 
-        /* Модальные окна и утилиты */
         .loading, .error {
             text-align: center;
             padding: 20px;
@@ -284,6 +275,8 @@
                 <p id="edit-mode" style="color: #666; margin-top: 6px; font-size: 14px;">Загрузка...</p>
             </div>
 
+            <div id="lock-message" class="lock-message" style="display: none;"></div>
+
             <div id="loading" class="loading">Загрузка данных...</div>
             <div id="error-message" class="error" style="display: none;"></div>
 
@@ -346,6 +339,8 @@
         let players = [];
         let isEditMode = false;
         let isAdmin = false;
+        let editLocked = false;
+        let lockedBy = '';
         let currentEdit = null;
         let hasChanges = false;
         let saveCallback = null;
@@ -420,10 +415,18 @@
         function loadDataFromUrl() {
             const params = new URLSearchParams(window.location.search);
             const dataUrl = params.get('dataUrl') || params.get('dataurl') || params.get('dataURL');
-            isAdmin = params.get('isAdmin') === 'true' || params.get('isadmin') === 'true';
+            isAdmin = params.get('isAdmin') === 'true';
             isEditMode = (params.get('edit') === 'true') && isAdmin;
+            editLocked = params.get('editLocked') === 'true';
+            lockedBy = params.get('lockedBy') || '';
 
             if (!dataUrl) { showUniversalAlert('URL данных не указан.'); renderTable(); return; }
+
+            if (editLocked) {
+                document.getElementById('lock-message').textContent = `Рейтинг редактируется пользователем ${lockedBy}`;
+                document.getElementById('lock-message').style.display = 'block';
+                isEditMode = false;
+            }
 
             try {
                 fetch(`${decodeURIComponent(dataUrl)}?t=${Date.now()}`)
@@ -486,23 +489,19 @@
                 players.forEach((p, i) => {
                     const tr = document.createElement('tr');
 
-                    // Место (добавить строку)
                     const placeTd = document.createElement('td');
                     placeTd.textContent = p.place || '';
                     if (isEditMode) { placeTd.classList.add('editable', 'add-row'); placeTd.onclick = () => editPlace(i); }
                     tr.appendChild(placeTd);
 
-                    // Ник
                     const nickTd = document.createElement('td');
                     nickTd.textContent = p.nick || '';
                     if (isEditMode) { nickTd.classList.add('editable'); nickTd.onclick = () => editNick(i); }
                     tr.appendChild(nickTd);
 
-                    // Игры
                     tr.appendChild(Object.assign(document.createElement('td'), { textContent: p.totalGames || 0 }));
 
-                    // Роли
-                    const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+                    const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','ками生态环境','мститель'];
                     roles.forEach(r => {
                         const td = document.createElement('td');
                         const d = p[r] || {o:0,t:0};
@@ -511,7 +510,6 @@
                         tr.appendChild(td);
                     });
 
-                    // Очки
                     const pointsTd = document.createElement('td');
                     pointsTd.textContent = p.totalPoints || 0;
                     pointsTd.classList.add('points-cell');
@@ -522,8 +520,8 @@
             }
 
             saveBtn.style.display = isEditMode ? 'block' : 'none';
-            editModeText.textContent = isEditMode ? 'Режим редактирования' : 'Только просмотр';
-            editModeText.style.color = isEditMode ? '#ff9800' : '#666';
+            editModeText.textContent = isEditMode ? 'Режим редактирования' : (editLocked ? 'Редактирование заблокировано' : 'Только просмотр');
+            editModeText.style.color = isEditMode ? '#ff9800' : (editLocked ? '#d32f2f' : '#666');
 
             setTimeout(initZoom, 100);
         }
@@ -587,6 +585,33 @@
             renderTable();
         }
 
+        // === РАЗБЛОКИРОВКА ПРИ ЗАКРЫТИИ WEBAPP ===
+        function sendUnlock() {
+            if (tg.sendData && isEditMode) {
+                try {
+                    tg.sendData("unlock_edit");
+                } catch(e) {
+                    console.warn("Не удалось отправить unlock_edit", e);
+                }
+            }
+        }
+
+        // При нажатии системной кнопки "Назад"
+        tg.onEvent('backButtonClicked', () => {
+            sendUnlock();
+            tg.close();
+        });
+
+        // При закрытии окна
+        window.addEventListener('beforeunload', sendUnlock);
+        window.addEventListener('pagehide', sendUnlock);
+
+        // Если Telegram сам закрывает WebApp
+        tg.onEvent('viewportChanged', () => {
+            if (tg.isClosing) sendUnlock();
+        });
+
+        // Кнопка сохранения
         document.getElementById('save-btn').onclick = () => {
             if (!hasChanges) return showUniversalAlert('Нет изменений');
             showUniversalConfirm('Сохранение', 'Сохранить изменения?', res => {
@@ -605,5 +630,5 @@
 
         loadDataFromUrl();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a508b74ad0a9fc4',t:'MTc2NDIzNTE3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
