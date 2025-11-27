@@ -429,7 +429,7 @@
                 fetch(`${decodeURIComponent(dataUrl)}?t=${Date.now()}`)
                     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
                     .then(data => { players = data; renderTable(); })
-                    .catch(() => { showUniversalAlert('Ошибка загрузки данных'); renderTable(); });
+                    .catch(e => { showUniversalAlert('Ошибка загрузки данных: ' + e.message); renderTable(); });
             } catch (e) {
                 showUniversalAlert('Ошибка при загрузке: ' + e.message);
                 renderTable();
