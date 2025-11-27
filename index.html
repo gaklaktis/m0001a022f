@@ -330,279 +330,330 @@
         </div>
     </div>
 
-    <script>
-        let tg = Telegram.WebApp;
-        let players = [];
-        let isEditMode = false;
-        let isAdmin = false;
-        let currentEdit = null;
-        let hasChanges = false;
-        let saveCallback = null;
-        let currentDataUrl = '';
+<script>
+    let tg = Telegram.WebApp;
+    let players = [];
+    let isEditMode = false;
+    let isAdmin = false;
+    let currentEdit = null;
+    let hasChanges = false;
+    let saveCallback = null;
+    let currentDataUrl = '';
 
-        // === ЗУМ ===
-        let currentScale = 1;
-        let isZooming = false;
-        let initialDistance = 0;
-        let lastScale = 1;
-        let zoomEnabled = true;
-        const minScale = 0.5;
-        const maxScale = 3;
+    // === ЗУМ ===
+    let currentScale = 1;
+    let lastScale = 1;
+    const minScale = 0.5;
+    const maxScale = 3;
 
-        function initZoom() {
-            const container = document.getElementById('main-container');
-            document.getElementById('zoom-controls').style.display = 'flex';
-            container.addEventListener('touchstart', e => { if (e.touches.length === 2) { isZooming = true; initialDistance = getDistance(e.touches[0], e.touches[1]); e.preventDefault(); } }, { passive: false });
-            container.addEventListener('touchmove', e => { if (isZooming && e.touches.length === 2) { const scale = getDistance(e.touches[0], e.touches[1]) / initialDistance; applyZoom(lastScale * scale); e.preventDefault(); } }, { passive: false });
-            container.addEventListener('touchend', () => { if (isZooming) { isZooming = false; lastScale = currentScale; } });
-            container.addEventListener('dblclick', resetZoom);
-            setTimeout(autoFitTable, 100);
-        }
+    function initZoom() {
+        const container = document.getElementById('main-container');
+        document.getElementById('zoom-controls').style.display = 'flex';
+        let touchStartDist = 0;
 
-        function getDistance(t1, t2) { const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY; return Math.hypot(dx, dy); }
+        container.addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                touchStartDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+            }
+        }, { passive: false });
 
-        function applyZoom(scale) {
-            scale = Math.max(minScale, Math.min(maxScale, scale));
-            currentScale = scale;
-            document.getElementById('main-container').style.transform = `scale(${scale})`;
-            const ind = document.getElementById('zoom-indicator');
-            ind.textContent = Math.round(scale * 100) + '%';
-            ind.style.display = 'block';
-            clearTimeout(window.zoomIndicatorTimeout);
-            window.zoomIndicatorTimeout = setTimeout(() => ind.style.display = 'none', 2000);
-        }
+        container.addEventListener('touchmove', e => {
+            if (e.touches.length === 2 && touchStartDist > 0) {
+                e.preventDefault();
+                const currentDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                const scale = currentScale * (currentDist / touchStartDist);
+                applyZoom(scale);
+            }
+        }, { passive: false });
 
-        function zoomIn() { applyZoom(currentScale + 0.1); lastScale = currentScale; }
-        function zoomOut() { applyZoom(currentScale - 0.1); lastScale = currentScale; }
-        function resetZoom() { autoFitTable(); }
-        function autoFitTable() {
-            const table = document.getElementById('rating-table');
-            if (!table) return;
-            const tableWidth = table.scrollWidth;
-            const availableWidth = window.innerWidth - 30;
-            let scale = tableWidth > availableWidth ? availableWidth / tableWidth : 1;
-            scale = Math.max(minScale, scale);
+        container.addEventListener('dblclick', resetZoom);
+    }
+
+    function applyZoom(scale) {
+        scale = Math.max(minScale, Math.min(maxScale, scale));
+        currentScale = scale;
+        document.getElementById('main-container').style.transform = `scale(${scale})`;
+        const ind = document.getElementById('zoom-indicator');
+        ind.textContent = Math.round(scale * 100) + '%';
+        ind.style.display = 'block';
+        clearTimeout(window.zoomHide);
+        window.zoomHide = setTimeout(() => ind.style.display = 'none', 1500);
+    }
+
+    function zoomIn() { applyZoom(currentScale + 0.15); lastScale = currentScale; }
+    function zoomOut() { applyZoom(currentScale - 0.15); lastScale = currentScale; }
+    function resetZoom() { applyZoom(1); lastScale = 1; autoFitTable(); }
+
+    function autoFitTable() {
+        const table = document.getElementById('rating-table');
+        if (!table) return;
+        const rect = table.getBoundingClientRect();
+        const available = window.innerWidth - 40;
+        if (rect.width > available) {
+            const scale = available / rect.width;
             applyZoom(scale);
-            lastScale = currentScale;
+        }
+    }
+
+    tg.expand();
+
+    // === ГЛАВНАЯ ФУНКЦИЯ — МОЩНЫЙ ОБХОД КЭША ===
+    function loadDataFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        let dataUrl = params.get('dataUrl');
+
+        if (!dataUrl) {
+            showAlert('Ошибка: не передан URL данных');
+            return;
         }
 
-        tg.expand();
-
-        // === МОЩНЫЙ ОБХОД КЭША ===
-        function loadDataFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            let dataUrl = params.get('dataUrl') || params.get('dataurl') || params.get('dataURL');
-            isAdmin = params.get('isAdmin') === 'true' || params.get('isadmin') === 'true';
-            isEditMode = (params.get('edit') === 'true') && isAdmin;
-
-            if (!dataUrl) {
-                showAlert('URL данных не указан.');
-                renderTable();
-                return;
-            }
-
+        try {
             dataUrl = decodeURIComponent(dataUrl);
-            currentDataUrl = dataUrl.split('?')[0]; // чистый URL без параметров
-
-            const bust = Date.now();
-            const finalUrl = `${currentDataUrl}?ts=${bust}&_=${bust}&nocache=${bust}&prevent_cache=${bust}&v=${bust}`;
-
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('rating-table').style.display = 'none';
-
-            fetch(finalUrl, {
-                method: 'GET',
-                cache: 'no-store',
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
-            })
-            .then(r => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                return r.json();
-            })
-            .then(data => {
-                players = data;
-                renderTable();
-                console.log("Данные обновлены мгновенно!");
-            })
-            .catch(err => {
-                console.error("Ошибка загрузки:", err);
-                showAlert('Не удалось загрузить данные. Попробуйте "Обновить".');
-                renderTable();
-            });
+        } catch (e) {
+            showAlert('Ошибка декодирования URL');
+            return;
         }
 
-        function showAlert(msg) {
-            if (typeof tg.showAlert === 'function') tg.showAlert(msg);
-            else alert(msg);
-        }
+        isAdmin = params.get('isAdmin') === 'true';
+        isEditMode = (params.get('edit') === 'true') && isAdmin;
+        currentDataUrl = dataUrl.split('?')[0]; // чистый URL
 
-        function showConfirm(title, msg, callback) {
-            if (tg.showConfirm) {
-                tg.showConfirm(msg, res => callback(res));
-            } else {
-                saveCallback = callback;
-                document.getElementById('confirmation-modal').style.display = 'flex';
+        const bust = Date.now();
+        const finalUrl = `${currentDataUrl}?_=${bust}&ts=${bust}&nocache=${bust}&v=${bust}&prevent_cache=${bust}`;
+
+        console.log("Загрузка данных:", finalUrl);
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('rating-table').style.display = 'none';
+
+        fetch(finalUrl, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+                'Expires': '0'
             }
+        })
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+            }
+            return r.json();
+        })
+        .then(data => {
+            players = Array.isArray(data) ? data : [];
+            renderTable();
+            console.log("Данные успешно загружены!");
+        })
+        .catch(err => {
+            console.error("Ошибка загрузки данных:", err);
+            showAlert('Не удалось загрузить данные.\nНажмите «Обновить»');
+            renderTable();
+        });
+    }
+
+    function showAlert(msg) {
+        if (tg.showAlert) tg.showAlert(msg);
+        else alert(msg);
+    }
+
+    function showConfirm(title, msg, callback) {
+        if (tg.showConfirm) {
+            tg.showConfirm(msg, callback);
+        } else {
+            saveCallback = callback;
+            document.getElementById('confirmation-modal').style.display = 'flex';
         }
+    }
 
-        function closeConfirmation(result) {
-            document.getElementById('confirmation-modal').style.display = 'none';
-            if (saveCallback) { saveCallback(result); saveCallback = null; }
+    function closeConfirmation(result) {
+        document.getElementById('confirmation-modal').style.display = 'none';
+        if (saveCallback) {
+            saveCallback(result);
+            saveCallback = null;
         }
+    }
 
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            const table = document.getElementById('rating-table');
-            const saveBtn = document.getElementById('save-btn');
-            const editModeText = document.getElementById('edit-mode');
+    function renderTable() {
+        const tbody = document.getElementById('table-body');
+        const table = document.getElementById('rating-table');
+        const saveBtn = document.getElementById('save-btn');
+        const editModeText = document.getElementById('edit-mode');
 
-            document.getElementById('loading').style.display = 'none';
-            table.style.display = 'table';
-            tbody.innerHTML = '';
+        document.getElementById('loading').style.display = 'none';
+        table.style.display = 'table';
+        tbody.innerHTML = '';
 
-            if (players.length === 0) {
-                const row = tbody.insertRow();
-                const cell = row.insertCell();
-                cell.colSpan = 13;
-                cell.textContent = 'Нет данных';
-                cell.style.padding = '30px';
-                cell.style.color = '#999';
-            } else {
-                players.forEach((p, i) => {
-                    const tr = tbody.insertRow();
+        if (players.length === 0) {
+            const row = tbody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 13;
+            cell.textContent = 'Нет данных в таблице';
+            cell.style.padding = '40px';
+            cell.style.color = '#999';
+            cell.style.fontSize = '16px';
+        } else {
+            players.forEach((p, i) => {
+                const tr = tbody.insertRow();
 
-                    // Место (добавить строку)
-                    const placeTd = tr.insertCell();
-                    placeTd.textContent = p.place || '';
+                // Место
+                const placeTd = tr.insertCell();
+                placeTd.textContent = p.place || '';
+                if (isEditMode) {
+                    placeTd.classList.add('editable', 'add-row');
+                    placeTd.onclick = () => editPlace(i);
+                }
+
+                // Ник
+                const nickTd = tr.insertCell();
+                nickTd.textContent = p.nick || '';
+                if (isEditMode) {
+                    nickTd.classList.add('editable');
+                    nickTd.onclick = () => editNick(i);
+                }
+
+                tr.insertCell().textContent = p.totalGames || 0;
+
+                const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+                roles.forEach(r => {
+                    const td = tr.insertCell();
+                    const d = p[r] || {o:0,t:0};
+                    td.textContent = `${d.o||0}/${d.t||0}`;
                     if (isEditMode) {
-                        placeTd.classList.add('editable', 'add-row');
-                        placeTd.onclick = () => editPlace(i);
+                        td.classList.add('editable');
+                        td.onclick = () => editRole(i, r);
                     }
-
-                    // Ник
-                    const nickTd = tr.insertCell();
-                    nickTd.textContent = p.nick || '';
-                    if (isEditMode) { nickTd.classList.add('editable'); nickTd.onclick = () => editNick(i); }
-
-                    tr.insertCell().textContent = p.totalGames || 0;
-
-                    const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
-                    roles.forEach(r => {
-                        const td = tr.insertCell();
-                        const d = p[r] || {o:0,t:0};
-                        td.textContent = `${d.o||0}/${d.t||0}`;
-                        if (isEditMode) { td.classList.add('editable'); td.onclick = () => editRole(i, r); }
-                    });
-
-                    const pointsTd = tr.insertCell();
-                    pointsTd.textContent = p.totalPoints || 0;
-                    pointsTd.classList.add('points-cell');
                 });
-            }
 
-            saveBtn.style.display = isEditMode ? 'block' : 'none';
-            editModeText.textContent = isEditMode ? 'Режим редактирования' : 'Только просмотр';
-            editModeText.style.color = isEditMode ? '#ff9800' : '#666';
-
-            setTimeout(initZoom, 100);
-        }
-
-        function editPlace(i) {
-            const newPlayer = { place: '', nick: 'Новый игрок', totalGames: 0, totalPoints: 0,
-                мирный:{o:0,t:0}, мафия:{o:0,t:0}, дон:{o:0,t:0}, любовница:{o:0,t:0},
-                шериф:{o:0,t:0}, доктор:{o:0,t:0}, маньяк:{o:0,t:0}, камикадзе:{o:0,t:0}, мститель:{o:0,t:0} };
-            players.splice(i + 1, 0, newPlayer);
-            hasChanges = true;
-            renderTable();
-        }
-
-        function editNick(i) { currentEdit = {type:'nick', index:i}; showModal('Ник', players[i].nick || '', ''); }
-        function editRole(i, role) { currentEdit = {type:'role', index:i, role}; showModal(`Роль: ${role}`, '', '0–4 — добавить очки<br>00 — откат<br>000N — заменить'); }
-
-        function showModal(title, value, info) {
-            zoomEnabled = false;
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-input').value = value;
-            document.getElementById('modal-info').innerHTML = info;
-            document.getElementById('edit-modal').style.display = 'flex';
-            document.getElementById('modal-input').focus();
-        }
-
-        function closeModal() {
-            document.getElementById('edit-modal').style.display = 'none';
-            currentEdit = null;
-            setTimeout(() => zoomEnabled = true, 100);
-        }
-
-        function confirmEdit() {
-            const val = document.getElementById('modal-input').value.trim();
-            if (!currentEdit) return;
-
-            if (currentEdit.type === 'nick') {
-                players[currentEdit.index].nick = val;
-            } else if (currentEdit.type === 'role') {
-                const data = players[currentEdit.index][currentEdit.role] || {o:0,t:0};
-                if (val === '00' && data.lastPoints !== undefined) {
-                    data.o = Math.max(0, data.o - data.lastPoints);
-                    data.t = Math.max(0, data.t - 1);
-                    delete data.lastPoints;
-                } else if (val.startsWith('000')) {
-                    const n = parseInt(val.slice(3));
-                    if (!isNaN(n)) data.o = n;
-                } else {
-                    const pts = parseInt(val);
-                    if (isNaN(pts) || pts < 0 || pts > 4) { showAlert('Введите 0–4'); closeModal(); return; }
-                    data.lastPoints = pts;
-                    data.o = (data.o || 0) + pts;
-                    data.t = (data.t || 0) + 1;
-                }
-                players[currentEdit.index][currentEdit.role] = data;
-                recalculatePlayer(currentEdit.index);
-            }
-
-            hasChanges = true;
-            closeModal();
-            renderTable();
-        }
-
-        function recalculatePlayer(i) {
-            const p = players[i];
-            let games = 0, points = 0;
-            const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
-            roles.forEach(r => { const d = p[r] || {o:0,t:0}; games += d.t||0; points += d.o||0; });
-            p.totalGames = games; p.totalPoints = points;
-        }
-
-        document.getElementById('save-btn').onclick = () => {
-            if (!hasChanges) return showAlert('Нет изменений');
-            showConfirm('Сохранение', 'Сохранить все изменения?', confirmed => {
-                if (!confirmed) return;
-                const btn = document.getElementById('save-btn');
-                btn.textContent = 'СОХРАНЯЕМ...'; btn.disabled = true;
-                tg.sendData(JSON.stringify(players));
-                setTimeout(() => {
-                    btn.textContent = 'СОХРАНЕНО!';
-                    btn.classList. add('saved');
-                    hasChanges = false;
-                    setTimeout(() => loadDataFromUrl(), 1500); // Автообновление через 1.5 сек
-                }, 800);
+                const pointsTd = tr.insertCell();
+                pointsTd.textContent = p.totalPoints || 0;
+                pointsTd.classList.add('points-cell');
             });
+        }
+
+        saveBtn.style.display = isEditMode ? 'block' : 'none';
+        editModeText.textContent = isEditMode ? 'Режим редактирования' : 'Только просмотр';
+        editModeText.style.color = isEditMode ? '#ff9800' : '#666';
+
+        setTimeout(() => {
+            initZoom();
+            autoFitTable();
+        }, 100);
+    }
+
+    function editPlace(i) {
+        const newPlayer = {
+            place: '', nick: 'Новый игрок', totalGames: 0, totalPoints: 0,
+            мирный:{o:0,t:0}, мафия:{o:0,t:0}, дон:{o:0,t:0}, любовница:{o:0,t:0},
+            шериф:{o:0,t:0}, доктор:{o:0,t:0}, маньяк:{o:0,t:0}, камикадзе:{o:0,t:0}, мститель:{o:0,t:0}
         };
+        players.splice(i + 1, 0, newPlayer);
+        hasChanges = true;
+        renderTable();
+    }
 
-        document.getElementById('refresh-btn').onclick = () => {
-            loadDataFromUrl();
-        };
+    function editNick(i) { currentEdit = {type:'nick', index:i}; showModal('Ник', players[i].nick || '', ''); }
+    function editRole(i, role) { currentEdit = {type:'role', index:i, role}; showModal(`Роль: ${role}`, '', '0–4 — добавить очки\n00 — откат\n000N — заменить очки'); }
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeConfirmation(false); } });
-        window.addEventListener('orientationchange', () => setTimeout(autoFitTable, 300));
-        window.addEventListener('resize', () => setTimeout(autoFitTable, 100));
+    function showModal(title, value, info) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-input').value = value;
+        document.getElementById('modal-info').innerHTML = info || '';
+        document.getElementById('edit-modal').style.display = 'flex';
+        document.getElementById('modal-input').focus();
+    }
 
-        // Старт
+    function closeModal() {
+        document.getElementById('edit-modal').style.display = 'none';
+        currentEdit = null;
+    }
+
+    function confirmEdit() {
+        const val = document.getElementById('modal-input').value.trim();
+        if (!currentEdit) return;
+
+        if (currentEdit.type === 'nick') {
+            players[currentEdit.index].nick = val || 'Игрок';
+        } else if (currentEdit.type === 'role') {
+            const data = players[currentEdit.index][currentEdit.role] || {o:0,t:0};
+            if (val === '00' && data.lastPoints !== undefined) {
+                data.o = Math.max(0, data.o - data.lastPoints);
+                data.t = Math.max(0, data.t - 1);
+                delete data.lastPoints;
+            } else if (val.startsWith('000')) {
+                const n = parseInt(val.slice(3));
+                if (!isNaN(n) && n >= 0) data.o = n;
+            } else {
+                const pts = parseInt(val);
+                if (isNaN(pts) || pts < 0 || pts > 4) {
+                    showAlert('Введите число от 0 до 4');
+                    return;
+                }
+                data.lastPoints = pts;
+                data.o = (data.o || 0) + pts;
+                data.t = (data.t || 0) + 1;
+            }
+            players[currentEdit.index][currentEdit.role] = data;
+            recalculatePlayer(currentEdit.index);
+        }
+
+        hasChanges = true;
+        closeModal();
+        renderTable();
+    }
+
+    function recalculatePlayer(i) {
+        const p = players[i];
+        let games = 0, points = 0;
+        const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+        roles.forEach(r => {
+            const d = p[r] || {o:0,t:0};
+            games += d.t || 0;
+            points += d.o || 0;
+        });
+        p.totalGames = games;
+        p.totalPoints = points;
+    }
+
+    // Сохранение
+    document.getElementById('save-btn').onclick = () => {
+        if (!hasChanges) return showAlert('Нет изменений для сохранения');
+        showConfirm('Сохранение', 'Сохранить все изменения в рейтинг?', confirmed => {
+            if (!confirmed) return;
+            const btn = document.getElementById('save-btn');
+            btn.textContent = 'СОХРАНЯЕМ...';
+            btn.disabled = true;
+            tg.sendData(JSON.stringify(players));
+            setTimeout(() => {
+                btn.textContent = 'СОХРАНЕНО!';
+                btn.classList.add('saved');
+                hasChanges = false;
+                setTimeout(() => loadDataFromUrl(), 1500);
+            }, 1000);
+        });
+    };
+
+    document.getElementById('refresh-btn').onclick = () => {
         loadDataFromUrl();
-    </script>
+    };
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeModal();
+            closeConfirmation(false);
+        }
+    });
+
+    // Запуск
+    loadDataFromUrl();
+</script>
 </body>
 </html>
