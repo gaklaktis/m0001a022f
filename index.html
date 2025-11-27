@@ -7,400 +7,235 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            padding: 10px;
-            min-height: 100vh;
-            touch-action: pan-x pan-y;
-            overflow-x: hidden;
-            overflow-y: auto;
-        }
-        .container {
-            max-width: 100%;
-            transform-origin: top left;
-            transition: transform 0.15s ease-out;
-        }
-        .zoom-controls {
-            position: fixed;
-            bottom: 80px; right: 15px;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: rgba(255,255,255,0.95);
-            padding: 12px 10px;
-            border-radius: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            backdrop-filter: blur(10px);
-        }
-        .zoom-btn {
-            width: 44px; height: 44px;
-            border: none; border-radius: 50%;
-            background: #2196F3; color: white;
-            font-size: 20px; font-weight: bold;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .zoom-btn:active { transform: scale(0.92); }
-        .zoom-reset { background: #ff9800; }
-        .zoom-indicator {
-            position: fixed; top: 70px; right: 15px;
-            background: rgba(0,0,0,0.75); color: white;
-            padding: 6px 12px; border-radius: 20px;
-            font-size: 13px; font-weight: 600; z-index: 100;
-            backdrop-filter: blur(8px);
-        }
-        .content-wrapper { display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
-        .header {
-            text-align: center; margin-bottom: 16px; padding: 16px 12px;
-            background: white; border-radius: 14px; box-shadow: 0 3px 12px rgba(0,0,0,0.1);
-            min-width: calc(13 * 44px + 20px);
-        }
-        .header h2 { font-size: 22px; margin-bottom: 6px; }
-        .table-wrapper { border-radius: 14px; overflow: hidden; box-shadow: 0 3px 12px rgba(0,0,0,0.12); }
-        table {
-            width: auto; border-collapse: collapse; background: white;
-            font-size: 13px; border-radius: 14px; overflow: hidden;
-        }
-        th, td {
-            padding: 10px 6px; text-align: center; border: 1px solid #e0e0e0;
-            min-width: 44px; white-space: nowrap;
-        }
-        th { background: #1976d2; color: white; font-weight: 600; position: sticky; top: 0; z-index: 10; }
-        tr:nth-child(even) { background: #f8fbff; }
-        tr:hover { background: #e3f2fd; }
-        .editable { cursor: pointer; }
-        .editable:hover { background-color: #bbdefb !important; }
-        .add-row { background: #4caf50 !important; color: white; font-weight: bold; }
-        .points-cell { background: rgba(255,82,82,0.75) !important; color: white; font-weight: bold; font-size: 14px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 10px; min-height: 100vh; }
+        .container { max-width: 100%; transform-origin: top left; transition: transform 0.15s; }
+        .header { text-align: center; padding: 16px; background: white; border-radius: 14px; margin-bottom: 16px; box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
+        .header h2 { font-size: 22px; }
         .btn-group { display: flex; flex-direction: column; gap: 12px; margin: 20px auto; max-width: 400px; width: 100%; }
-        .save-btn, .refresh-btn {
-            padding: 15px; background: #4caf50; color: white; border: none;
-            border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(76,175,80,0.3); transition: all 0.2s;
-        }
+        .save-btn, .refresh-btn { padding: 15px; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; color: white; cursor: pointer; }
+        .save-btn { background: #4caf50; }
         .refresh-btn { background: #2196F3; }
-        .save-btn:hover { background: #43a047; }
-        .refresh-btn:hover { background: #1976d2; }
-        .save-btn.saved { background: #2e7d32; }
-        .loading { text-align: center; padding: 30px; font-size: 16px; color: #666; }
-        .modal, .confirmation-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal-content, .confirmation-content {
-            background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 340px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .modal input {
-            width: 100%; padding: 12px; margin: 12px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;
-        }
-        .modal-buttons, .confirmation-buttons { display: flex; gap: 12px; margin-top: 20px; }
-        .modal-btn, .confirmation-btn {
-            flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
-        }
-        .confirm-btn, .confirm-yes { background: #4caf50; color: white; }
-        .cancel-btn, .confirm-no { background: #f44336; color: white; }
-        .modal-info { font-size: 13px; color: #666; margin-top: 8px; line-height: 1.4; }
-        @media (max-width: 768px) {
-            th, td { min-width: 36px; padding: 8px 4px; font-size: 11px; }
-            .header, .table-wrapper { min-width: calc(13 * 36px + 16px); }
-        }
+        .loading { text-align: center; padding: 30px; color: #666; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 14px; overflow: hidden; font-size: 13px; }
+        th, td { padding: 10px 6px; text-align: center; border: 1px solid #e0e0e0; min-width: 44px; }
+        th { background: #1976d2; color: white; position: sticky; top: 0; }
+        .points-cell { background: #ff5252 !important; color: white; font-weight: bold; }
+        .editable { cursor: pointer; }
+        .editable:hover { background: #bbdefb !important; }
+        .add-row { background: #4caf50 !important; color: white; }
     </style>
 </head>
 <body>
 
-    <div class="zoom-indicator" id="zoom-indicator" style="display: none;">100%</div>
-    <div class="zoom-controls" id="zoom-controls">
-        <button class="zoom-btn" onclick="zoomIn()">+</button>
-        <button class="zoom-btn zoom-reset" onclick="resetZoom()">Reset</button>
-        <button class="zoom-btn" onclick="zoomOut()">−</button>
-    </div>
+<div class="header">
+    <h2>Рейтинг Мафии</h2>
+    <p id="status">Загрузка данных...</p>
+</div>
 
-    <div class="container" id="main-container">
-        <div class="content-wrapper">
-            <div class="header">
-                <h2>Рейтинг Мафии</h2>
-                <p id="edit-mode" style="margin-top: 6px; font-size: 14px; color: #666;">Загрузка...</p>
-            </div>
+<div id="loading" class="loading">Попытка загрузить данные...</div>
+<table id="table" style="display:none;">
+    <thead>
+        <tr>
+            <th>Место</th><th>Ник</th><th>Игры</th>
+            <th>Мирный</th><th>Мафия</th><th>Дон</th><th>Любовница</th>
+            <th>Шериф</th><th>Доктор</th><th>Маньяк</th><th>Камикадзе</th><th>Мститель</th>
+            <th>Очки</th>
+        </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+</table>
 
-            <div id="loading" class="loading">Загрузка данных...</div>
+<div class="btn-group">
+    <button id="save-btn" class="save-btn" style="display:none;">СОХРАНИТЬ</button>
+    <button id="refresh-btn" class="refresh-btn">ОБНОВИТЬ ДАННЫЕ</button>
+</div>
 
-            <div class="table-wrapper">
-                <table id="rating-table" style="display: none;">
-                    <thead>
-                        <tr>
-                            <th>Место</th><th>Ник</th><th>Игры</th>
-                            <th>Мирный</th><th>Мафия</th><th>Дон</th><th>Любовница</th>
-                            <th>Шериф</th><th>Доктор</th><th>Маньяк</th><th>Камикадзе</th><th>Мститель</th>
-                            <th>Очки</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body"></tbody>
-                </table>
-            </div>
+<script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) tg.expand();
 
-            <div class="btn-group">
-                <button id="save-btn" class="save-btn" style="display: none;">СОХРАНИТЬ ИЗМЕНЕНИЯ</button>
-                <button id="refresh-btn" class="refresh-btn">ОБНОВИТЬ ДАННЫЕ</button>
-            </div>
-        </div>
-    </div>
+    let players = [];
+    let isEditMode = false;
+    let hasChanges = false;
 
-    <!-- Модальные окна -->
-    <div id="edit-modal" class="modal">
-        <div class="modal-content">
-            <h3 id="modal-title">Редактирование</h3>
-            <input type="text" id="modal-input" placeholder="Введите значение">
-            <div id="modal-info" class="modal-info"></div>
-            <div class="modal-buttons">
-                <button class="modal-btn cancel-btn" onclick="closeModal()">Отмена</button>
-                <button class="modal-btn confirm-btn" onclick="confirmEdit()">OK</button>
-            </div>
-        </div>
-    </div>
+    // Безопасный alert (работает везде)
+    function safeAlert(msg) {
+        try {
+            if (tg && tg.showAlert) tg.showAlert(msg);
+            else alert(msg);
+        } catch (e) {
+            console.warn("showAlert не поддерживается:", e);
+            alert(msg);
+        }
+    }
 
-    <div id="confirmation-modal" class="confirmation-modal">
-        <div class="confirmation-content">
-            <h3>Подтверждение</h3>
-            <p>Сохранить все изменения?</p>
-            <div class="confirmation-buttons">
-                <button class="confirmation-btn confirm-no" onclick="closeConfirmation(false)">Отмена</button>
-                <button class="confirmation-btn confirm-yes" onclick="closeConfirmation(true)">Да</button>
-            </div>
-        </div>
-    </div>
+    function loadData() {
+        const params = new URLSearchParams(location.search);
+        let url = params.get('dataUrl');
+        if (!url) return safeAlert("Нет ссылки на данные");
 
-    <script>
-        const tg = Telegram.WebApp;
-        tg.expand();
+        try { url = decodeURIComponent(url); } catch(e) {}
 
-        let players = [];
-        let isEditMode = false;
-        let isAdmin = false;
-        let currentEdit = null;
-        let hasChanges = false;
-        let saveCallback = null;
-        let currentScale = 1;
-        let lastScale = 1;
-        const minScale = 0.5;
-        const maxScale = 3;
+        isEditMode = params.get('edit') === 'true';
 
-        // === Умная загрузка данных (пробует оба пути) ===
-        function loadDataFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            let baseUrl = params.get('dataUrl');
+        const base = url.split('?')[0];
+        const bust = Date.now();
 
-            if (!baseUrl) {
-                showAlert('Нет ссылки на данные');
+        // Пробуем 3 реальных пути (у тебя файл в Public!)
+        const urls = [
+            `${base}?t=${bust}`,
+            base.replace('/main/', '/main/Public/') + `?t=${bust}`,
+            base.replace('raw.githubusercontent.com', 'cdn.statically.io/gh') + `?t=${bust}`
+        ];
+
+        document.getElementById('loading').textContent = 'Попытка 1/3...';
+
+        let index = 0;
+        function tryLoad() {
+            if (index >= urls.length) {
+                document.getElementById('status').textContent = 'Ошибка загрузки';
+                document.getElementById('loading').textContent = 'Не удалось загрузить data.json';
+                console.error("Все пути не сработали:", urls);
                 return;
             }
 
-            try { baseUrl = decodeURIComponent(baseUrl); } catch(e) {}
+            console.log("Пробуем:", urls[index]);
+            document.getElementById('loading').textContent = `Попытка ${index + 1}/3...`;
 
-            isAdmin = params.get('isAdmin') === 'true';
-            isEditMode = (params.get('edit') === 'true') && isAdmin;
-
-            const cleanUrl = baseUrl.split('?')[0];
-            const bust = Date.now();
-            const urlsToTry = [
-                `${cleanUrl}?t=${bust}&_=${bust}&v=${bust}`,
-                `${cleanUrl.replace('/main/', '/main/Public/')}?t=${bust}&_=${bust}&v=${bust}`
-            ];
-
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('rating-table').style.display = 'none';
-
-            function tryNext(index = 0) {
-                if (index >= urlsToTry.length) {
-                    showAlert('Не удалось найти data.json\nПроверьте расположение файла');
-                    renderTable();
-                    return;
-                }
-
-                console.log('Загрузка:', urlsToTry[index]);
-
-                fetch(urlsToTry[index], {
-                    method: 'GET',
-                    cache: 'no-store',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                })
+            fetch(urls[index], { cache: "no-store" })
                 .then(r => {
-                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    if (!r.ok) throw new Error(r.status);
                     return r.json();
                 })
                 .then(data => {
                     players = Array.isArray(data) ? data : [];
-                    renderTable();
-                    console.log('Данные загружены из:', urlsToTry[index]);
+                    render();
+                    document.getElementById('status').textContent = `Загружено: ${players.length} игроков`;
+                    console.log("Успешно загружено из:", urls[index]);
                 })
                 .catch(err => {
-                    console.warn('Не удалось загрузить из', urlsToTry[index], err);
-                    tryNext(index + 1);
+                    console.warn("Не сработало:", urls[index], err);
+                    index++;
+                    setTimeout(tryLoad, 500);
                 });
+        }
+
+        tryLoad();
+    }
+
+    function render() {
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('table').style.display = 'table';
+        document.getElementById('save-btn').style.display = isEditMode ? 'block' : 'none';
+
+        if (players.length === 0) {
+            const tr = tbody.insertRow();
+            const td = tr.insertCell();
+            td.colSpan = 13;
+            td.textContent = 'Нет данных';
+            td.style.textAlign = 'center';
+            td.style.padding = '40px';
+            td.style.color = '#999';
+            return;
+        }
+
+        players.forEach((p, i) => {
+            const tr = tbody.insertRow();
+
+            const placeTd = tr.insertCell();
+            placeTd.textContent = p.place || '';
+            if (isEditMode) {
+                placeTd.className = 'editable add-row';
+                placeTd.onclick = () => addPlayer(i);
             }
 
-            tryNext();
-        }
+            const nickTd = tr.insertCell();
+            nickTd.textContent = p.nick || '—';
+            if (isEditMode) { nickTd.className = 'editable'; nickTd.onclick = () => editNick(i); }
 
-        function showAlert(msg) { tg.showAlert ? tg.showAlert(msg) : alert(msg); }
-        function showConfirm(title, msg, cb) {
-            if (tg.showConfirm) tg.showConfirm(msg, cb);
-            else { saveCallback = cb; document.getElementById('confirmation-modal').style.display = 'flex'; }
-        }
-        function closeConfirmation(res) {
-            document.getElementById('confirmation-modal').style.display = 'none';
-            if (saveCallback) { saveCallback(res); saveCallback = null; }
-        }
+            tr.insertCell().textContent = p.totalGames || 0;
 
-        // Остальные функции (зум, таблица, редактирование, сохранение) — полностью рабочие
-        function applyZoom(scale) {
-            scale = Math.max(minScale, Math.min(maxScale, scale));
-            currentScale = scale;
-            document.getElementById('main-container').style.transform = `scale(${scale})`;
-            const ind = document.getElementById('zoom-indicator');
-            ind.textContent = Math.round(scale * 100) + '%';
-            ind.style.display = 'block';
-            clearTimeout(window.zoomHide);
-            window.zoomHide = setTimeout(() => ind.style.display = 'none', 1500);
-        }
-        function zoomIn() { applyZoom(currentScale + 0.15); }
-        function zoomOut() { applyZoom(currentScale - 0.15); }
-        function resetZoom() { applyZoom(1); autoFitTable(); }
-        function autoFitTable() {
-            const table = document.getElementById('rating-table');
-            if (!table || table.offsetWidth === 0) return;
-            const scale = Math.min(1, (window.innerWidth - 40) / table.offsetWidth);
-            if (scale < 1) applyZoom(scale);
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            const saveBtn = document.getElementById('save-btn');
-            const editModeText = document.getElementById('edit-mode');
-
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('rating-table').style.display = 'table';
-            tbody.innerHTML = '';
-
-            if (players.length === 0) {
-                const tr = tbody.insertRow();
+            ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'].forEach(role => {
                 const td = tr.insertCell();
-                td.colSpan = 13; td.textContent = 'Нет данных'; td.style.padding = '40px'; td.style.color = '#999';
-            } else {
-                players.forEach((p, i) => {
-                    const tr = tbody.insertRow();
-                    const placeTd = tr.insertCell(); placeTd.textContent = p.place || '';
-                    if (isEditMode) { placeTd.classList.add('editable', 'add-row'); placeTd.onclick = () => editPlace(i); }
-
-                    const nickTd = tr.insertCell(); nickTd.textContent = p.nick || '';
-                    if (isEditMode) { nickTd.classList.add('editable'); nickTd.onclick = () => editNick(i); }
-
-                    tr.insertCell().textContent = p.totalGames || 0;
-
-                    ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'].forEach(r => {
-                        const td = tr.insertCell();
-                        const d = p[r] || {o:0,t:0};
-                        td.textContent = `${d.o||0}/${d.t||0}`;
-                        if (isEditMode) { td.classList.add('editable'); td.onclick = () => editRole(i, r); }
-                    });
-
-                    const pointsTd = tr.insertCell(); pointsTd.textContent = p.totalPoints || 0;
-                    pointsTd.classList.add('points-cell');
-                });
-            }
-
-            saveBtn.style.display = isEditMode ? 'block' : 'none';
-            editModeText.textContent = isEditMode ? 'Режим редактирования' : 'Только просмотр';
-            editModeText.style.color = isEditMode ? '#ff9800' : '#666';
-
-            setTimeout(() => { autoFitTable(); }, 100);
-        }
-
-        function editPlace(i) {
-            const newPlayer = {place:'', nick:'Новый игрок', totalGames:0, totalPoints:0,
-                мирный:{o:0,t:0}, мафия:{o:0,t:0}, дон:{o:0,t:0}, любовница:{o:0,t:0},
-                шериф:{o:0,t:0}, доктор:{o:0,t:0}, маньяк:{o:0,t:0}, камикадзе:{o:0,t:0}, мститель:{o:0,t:0}};
-            players.splice(i + 1, 0, newPlayer);
-            hasChanges = true; renderTable();
-        }
-        function editNick(i) { currentEdit = {type:'nick', index:i}; showModal('Ник', players[i].nick || '', ''); }
-        function editRole(i, role) { currentEdit = {type:'role', index:i, role}; showModal(`Роль: ${role}`, '', '0–4 — добавить очки\n00 — откат\n000N — заменить'); }
-
-        function showModal(title, value, info) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-input').value = value;
-            document.getElementById('modal-info').innerHTML = info;
-            document.getElementById('edit-modal').style.display = 'flex';
-            document.getElementById('modal-input').focus();
-        }
-        function closeModal() { document.getElementById('edit-modal').style.display = 'none'; currentEdit = null; }
-
-        function confirmEdit() {
-            const val = document.getElementById('modal-input').value.trim();
-            if (!currentEdit) return;
-
-            if (currentEdit.type === 'nick') {
-                players[currentEdit.index].nick = val || 'Игрок';
-            } else if (currentEdit.type === 'role') {
-                const data = players[currentEdit.index][currentEdit.role] || {o:0,t:0};
-                if (val === '00' && data.lastPoints !== undefined) {
-                    data.o = Math.max(0, data.o - data.lastPoints);
-                    data.t = Math.max(0, data.t - 1);
-                    delete data.lastPoints;
-                } else if (val.startsWith('000')) {
-                    const n = parseInt(val.slice(3));
-                    if (!isNaN(n)) data.o = n;
-                } else {
-                    const pts = parseInt(val);
-                    if (isNaN(pts) || pts < 0 || pts > 4) { showAlert('Введите 0–4'); return; }
-                    data.lastPoints = pts;
-                    data.o = (data.o || 0) + pts;
-                    data.t = (data.t || 0) + 1;
+                const d = p[role] || {o:0,t:0};
+                td.textContent = `${d.o||0}/${d.t||0}`;
+                if (isEditMode) {
+                    td.className = 'editable';
+                    td.onclick = () => editRole(i, role);
                 }
-                players[currentEdit.index][currentEdit.role] = data;
-                recalculatePlayer(currentEdit.index);
-            }
-            hasChanges = true; closeModal(); renderTable();
-        }
-
-        function recalculatePlayer(i) {
-            const p = players[i];
-            let games = 0, points = 0;
-            ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'].forEach(r => {
-                const d = p[r] || {o:0,t:0};
-                games += d.t || 0;
-                points += d.o || 0;
             });
-            p.totalGames = games; p.totalPoints = points;
+
+            const pts = tr.insertCell();
+            pts.textContent = p.totalPoints || 0;
+            pts.className = 'points-cell';
+        });
+    }
+
+    function addPlayer(i) {
+        players.splice(i + 1, 0, {nick: "Новый игрок", totalGames: 0, totalPoints: 0,
+            мирный:{o:0,t:0}, мафия:{o:0,t:0}, дон:{o:0,t:0}, любовница:{o:0,t:0},
+            шериф:{o:0,t:0}, доктор:{o:0,t:0}, маньяк:{o:0,t:0}, камикадзе:{o:0,t:0}, мститель:{o:0,t:0}
+        });
+        hasChanges = true;
+        render();
+    }
+
+    function editNick(i) {
+        const nick = prompt("Новый ник:", players[i].nick || "");
+        if (nick !== null) {
+            players[i].nick = nick || "Игрок";
+            hasChanges = true;
+            render();
         }
+    }
 
-        document.getElementById('save-btn').onclick = () => {
-            if (!hasChanges) return showAlert('Нет изменений');
-            showConfirm('Сохранение', 'Сохранить изменения?', ok => {
-                if (!ok) return;
-                const btn = document.getElementById('save-btn');
-                btn.textContent = 'СОХРАНЯЕМ...'; btn.disabled = true;
-                tg.sendData(JSON.stringify(players));
-                setTimeout(() => {
-                    btn.textContent = 'СОХРАНЕНО!'; btn.classList.add('saved');
-                    hasChanges = false;
-                    setTimeout(() => loadDataFromUrl(), 1500);
-                }, 1000);
-            });
-        };
+    function editRole(i, role) {
+        const val = prompt(`Роль: ${role}\n\n0–4 — добавить очки\n00 — откат\n000N — заменить`, "");
+        if (val === null) return;
 
-        document.getElementById('refresh-btn').onclick = () => loadDataFromUrl();
+        const data = players[i][role] || {o:0,t:0};
+        if (val === "00" && data.lastPoints !== undefined) {
+            data.o = Math.max(0, data.o - data.lastPoints);
+            data.t = Math.max(0, data.t - 1);
+            delete data.lastPoints;
+        } else if (val.startsWith("000")) {
+            const n = parseInt(val.slice(3));
+            if (!isNaN(n)) data.o = n;
+        } else {
+            const pts = parseInt(val);
+            if (isNaN(pts) || pts < 0 || pts > 4) return safeAlert("Только 0–4!");
+            data.lastPoints = pts;
+            data.o = (data.o || 0) + pts;
+            data.t = (data.t || 0) + 1;
+        }
+        players[i][role] = data;
+        // Пересчитываем очки
+        let total = 0, games = 0;
+        for (const r of ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель']) {
+            const d = players[i][r] || {o:0,t:0};
+            total += d.o || 0;
+            games += d.t || 0;
+        }
+        players[i].totalPoints = total;
+        players[i].totalGames = games;
+        hasChanges = true;
+        render();
+    }
 
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeConfirmation(false); } });
+    document.getElementById('save-btn').onclick = () => {
+        if (!hasChanges) return safeAlert("Нет изменений");
+        if (!tg || !tg.sendData) return safeAlert("sendData недоступен");
+        tg.sendData(JSON.stringify(players));
+        hasChanges = false;
+        setTimeout(() => loadData(), 2000);
+    };
 
-        // Старт
-        loadDataFromUrl();
-    </script>
+    document.getElementById('refresh-btn').onclick = () => loadData();
+
+    // Старт
+    loadData();
+</script>
 </body>
 </html>
