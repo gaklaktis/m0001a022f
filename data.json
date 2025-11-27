@@ -1,9 +1,6 @@
 [
   {
-    "place": 1,
     "nick": "Карамелка",
-    "totalGames": 3,
-    "totalPoints": 908,
     "мирный": {
       "o": 0,
       "t": 0
@@ -39,13 +36,13 @@
     "мститель": {
       "o": 133,
       "t": 1
-    }
+    },
+    "totalPoints": 908,
+    "totalGames": 3,
+    "place": 1
   },
   {
-    "place": 2,
     "nick": "Джадж",
-    "totalGames": 2,
-    "totalPoints": 97,
     "мирный": {
       "o": 0,
       "t": 0
@@ -81,13 +78,13 @@
     "мститель": {
       "o": 0,
       "t": 0
-    }
+    },
+    "totalPoints": 97,
+    "totalGames": 2,
+    "place": 2
   },
   {
-    "place": 3,
     "nick": "Император",
-    "totalGames": 2,
-    "totalPoints": 70,
     "мирный": {
       "o": 4,
       "t": 1
@@ -123,13 +120,13 @@
     "мститель": {
       "o": 0,
       "t": 0
-    }
+    },
+    "totalPoints": 70,
+    "totalGames": 2,
+    "place": 3
   },
   {
-    "place": 4,
     "nick": "вася",
-    "totalGames": 3,
-    "totalPoints": 66,
     "мирный": {
       "o": 0,
       "t": 0
@@ -165,13 +162,13 @@
     "мститель": {
       "o": 0,
       "t": 0
-    }
+    },
+    "totalPoints": 66,
+    "totalGames": 3,
+    "place": 4
   },
   {
-    "place": 5,
     "nick": "Новый игрок3",
-    "totalGames": 2,
-    "totalPoints": 7,
     "мирный": {
       "o": 0,
       "t": 0
@@ -207,13 +204,13 @@
     "мститель": {
       "o": 0,
       "t": 0
-    }
+    },
+    "totalPoints": 7,
+    "totalGames": 2,
+    "place": 5
   },
   {
-    "place": 6,
     "nick": "Тони",
-    "totalGames": 2,
-    "totalPoints": 5,
     "мирный": {
       "o": 0,
       "t": 0
@@ -249,13 +246,13 @@
     "мститель": {
       "o": 0,
       "t": 0
-    }
+    },
+    "totalPoints": 5,
+    "totalGames": 2,
+    "place": 6
   },
   {
-    "place": 7,
     "nick": "Ирина",
-    "totalGames": 1,
-    "totalPoints": 2,
     "мирный": {
       "o": 0,
       "t": 0
@@ -291,6 +288,51 @@
     "мститель": {
       "o": 0,
       "t": 0
-    }
+    },
+    "totalPoints": 2,
+    "totalGames": 1,
+    "place": 7
+  },
+  {
+    "nick": "5344533",
+    "мирный": {
+      "o": 0,
+      "t": 0
+    },
+    "мафия": {
+      "o": 0,
+      "t": 0
+    },
+    "дон": {
+      "o": 0,
+      "t": 0
+    },
+    "любовница": {
+      "o": 0,
+      "t": 0
+    },
+    "шериф": {
+      "o": 0,
+      "t": 0
+    },
+    "доктор": {
+      "o": 0,
+      "t": 0
+    },
+    "маньяк": {
+      "o": 0,
+      "t": 0
+    },
+    "камикадзе": {
+      "o": 0,
+      "t": 0
+    },
+    "мститель": {
+      "o": 0,
+      "t": 0
+    },
+    "totalPoints": 0,
+    "totalGames": 0,
+    "place": 8
   }
 ]
