@@ -362,15 +362,15 @@
         function initZoom() {
             const container = document.getElementById('main-container');
             document.getElementById('zoom-controls').style.display = 'flex';
-            container.addEventListener('touchstart', handleTouchStart, { passive: false });
-            container.addEventListener('touchmove', handleTouchMove, { passive: false });
-            container.addEventListener('touchend', handleTouchEnd, { passive: false });
+            container.addEventListener('touchstart', handleTouchStart, { passive: true });
+            container.addEventListener('touchmove', handleTouchMove, { passive: true });
+            container.addEventListener('touchend', handleTouchEnd, { passive: true });
             container.addEventListener('dblclick', resetZoom);
             setTimeout(autoFitTable, 100);
         }
 
-        function handleTouchStart(e) { if (!zoomEnabled || e.touches.length !== 2) return; isZooming = true; initialDistance = getDistance(e.touches[0], e.touches[1]); e.preventDefault(); }
-        function handleTouchMove(e) { if (!isZooming || e.touches.length !== 2) return; const scale = getDistance(e.touches[0], e.touches[1]) / initialDistance; applyZoom(lastScale * scale); e.preventDefault(); }
+        function handleTouchStart(e) { if (!zoomEnabled || e.touches.length !== 2) return; isZooming = true; initialDistance = getDistance(e.touches[0], e.touches[1]); }
+        function handleTouchMove(e) { if (!isZooming || e.touches.length !== 2) return; const scale = getDistance(e.touches[0], e.touches[1]) / initialDistance; applyZoom(lastScale * scale); }
         function handleTouchEnd() { if (isZooming) { isZooming = false; lastScale = currentScale; } }
         function getDistance(t1, t2) { const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY; return Math.hypot(dx, dy); }
 
@@ -425,13 +425,43 @@
 
             if (!dataUrl) { showUniversalAlert('URL данных не указан.'); renderTable(); return; }
 
-            fetch(`${decodeURIComponent(dataUrl)}?t=${Date.now()}`)
-                .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-                .then(data => { players = data; renderTable(); })
-                .catch(() => { showUniversalAlert('Ошибка загрузки данных'); renderTable(); });
+            try {
+                fetch(`${decodeURIComponent(dataUrl)}?t=${Date.now()}`)
+                    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+                    .then(data => { players = data; renderTable(); })
+                    .catch(() => { showUniversalAlert('Ошибка загрузки данных'); renderTable(); });
+            } catch (e) {
+                showUniversalAlert('Ошибка при загрузке: ' + e.message);
+                renderTable();
+            }
+        }
+
+        function recalculateAllPlayers() {
+            players.forEach(recalculatePlayer);
+            players.sort((a, b) => b.totalPoints - a.totalPoints);
+            let currentPlace = 1;
+            let prevPoints = null;
+            players.forEach((p, i) => {
+                if (prevPoints !== null && p.totalPoints === prevPoints) {
+                    p.place = players[i - 1].place;
+                } else {
+                    p.place = currentPlace;
+                }
+                prevPoints = p.totalPoints;
+                currentPlace++;
+            });
+        }
+
+        function recalculatePlayer(i) {
+            const p = players[i];
+            let games = 0, points = 0;
+            const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
+            roles.forEach(r => { const d = p[r] || {o:0,t:0}; games += d.t||0; points += d.o||0; });
+            p.totalGames = games; p.totalPoints = points;
         }
 
         function renderTable() {
+            recalculateAllPlayers();
             const tbody = document.getElementById('table-body');
             const table = document.getElementById('rating-table');
             const saveBtn = document.getElementById('save-btn');
@@ -533,7 +563,8 @@
                     data.t = Math.max(0, data.t - 1);
                     delete data.lastPoints;
                 } else if (val.startsWith('000')) {
-                    const n = parseInt(val.slice(3));
+                    const nStr = val.slice(3);
+                    const n = nStr ? parseInt(nStr) : 0;
                     if (!isNaN(n)) data.o = n;
                 } else {
                     const pts = parseInt(val);
@@ -543,20 +574,12 @@
                     data.t = (data.t || 0) + 1;
                 }
                 players[currentEdit.index][currentEdit.role] = data;
-                recalculatePlayer(currentEdit.index);
+                recalculateAllPlayers();
             }
 
             hasChanges = true;
             closeModal();
             renderTable();
-        }
-
-        function recalculatePlayer(i) {
-            const p = players[i];
-            let games = 0, points = 0;
-            const roles = ['мирный','мафия','дон','любовница','шериф','доктор','маньяк','камикадзе','мститель'];
-            roles.forEach(r => { const d = p[r] || {o:0,t:0}; games += d.t||0; points += d.o||0; });
-            p.totalGames = games; p.totalPoints = points;
         }
 
         document.getElementById('save-btn').onclick = () => {
